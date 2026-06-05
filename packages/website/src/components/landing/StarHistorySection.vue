@@ -11,13 +11,13 @@ useScrollReveal()
 const stars = ref<number | null>(null)
 
 const chartSrc = computed(() => {
-  const base = 'https://api.star-history.com/svg?repos=EKKOLearnAI%2Fhermes-web-ui&type=Date'
+  const base = 'https://api.star-history.com/svg?repos=lukaisluka%2Fhermes-web-ui&type=Date'
   return isDark.value ? `${base}&theme=dark` : base
 })
 
 onMounted(async () => {
   try {
-    const res = await fetch('https://api.github.com/repos/EKKOLearnAI/hermes-web-ui')
+    const res = await fetch('https://api.github.com/repos/lukaisluka/hermes-web-ui')
     const data = await res.json()
     stars.value = data.stargazers_count
   } catch {}
@@ -32,7 +32,7 @@ onMounted(async () => {
     <div class="star-badges reveal reveal-delay-1">
       <a
         class="star-btn"
-        href="https://github.com/EKKOLearnAI/hermes-web-ui"
+        href="https://github.com/lukaisluka/hermes-web-ui"
         target="_blank"
         rel="noopener"
       >
@@ -45,19 +45,19 @@ onMounted(async () => {
 
       <img
         class="github-badge"
-        src="https://img.shields.io/github/license/EKKOLearnAI/hermes-web-ui?style=flat-square"
+        src="https://img.shields.io/github/license/lukaisluka/hermes-web-ui?style=flat-square"
         :alt="t('starHistory.licenseAlt')"
       />
       <img
         class="github-badge"
-        src="https://img.shields.io/github/v/release/EKKOLearnAI/hermes-web-ui?style=flat-square"
+        src="https://img.shields.io/github/v/release/lukaisluka/hermes-web-ui?style=flat-square"
         :alt="t('starHistory.versionAlt')"
       />
     </div>
 
     <div class="star-chart reveal reveal-delay-2">
       <a
-        href="https://www.star-history.com/?type=date&repos=EKKOLearnAI%2Fhermes-web-ui"
+        href="https://www.star-history.com/?type=date&repos=lukaisluka%2Fhermes-web-ui"
         target="_blank"
         rel="noopener noreferrer"
         class="chart-link"

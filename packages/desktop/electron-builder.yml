@@ -7,8 +7,9 @@ directories:
   buildResources: build
 
 publish:
-  provider: generic
-  url: https://download.ekkolearnai.com
+  provider: github
+  owner: lukaisluka
+  repo: hermes-web-ui
 
 # Don't auto-prune our root node_modules; we curate `files` and `extraResources` ourselves.
 buildDependenciesFromSource: false

@@ -4,10 +4,11 @@ This repository ships an environment-variable driven Docker Compose setup.
 
 ## Quick Start
 
-### Pull pre-built image (Recommended)
+### Build the local image
 
 ```bash
-WEBUI_IMAGE=ekkoye8888/hermes-web-ui docker compose up -d
+docker compose build
+docker compose up -d
 docker compose logs -f hermes-webui
 ```
 
@@ -38,7 +39,7 @@ All key runtime settings are configured from compose variables.
 | `BIND_HOST` | `0.0.0.0` | Optional Web UI bind host. Defaults to IPv4 for stable WSL/Windows access. Set `::` explicitly if you want IPv6 listening. |
 | `HERMES_BIN` | `/opt/hermes/.venv/bin/hermes` | Path to Hermes CLI binary |
 | `HERMES_AGENT_IMAGE` | `nousresearch/hermes-agent:latest` | Hermes Agent base image (used only during build) |
-| `WEBUI_IMAGE` | `hermes-web-ui-local:latest` | Web UI image (set to `ekkoye8888/hermes-web-ui` to use pre-built) |
+| `WEBUI_IMAGE` | `hermes-web-ui-local:latest` | Web UI image. Set this explicitly when using an image published by your deployment. |
 | `HERMES_DATA_DIR` | `./hermes_data` | Hermes runtime data directory |
 
 Override variables directly from shell:
@@ -50,7 +51,7 @@ PORT=16060 docker compose up -d
 Or create a `.env` file in the project root:
 
 ```
-WEBUI_IMAGE=ekkoye8888/hermes-web-ui
+WEBUI_IMAGE=your-registry/hermes-web-ui:latest
 PORT=6060
 ```
 

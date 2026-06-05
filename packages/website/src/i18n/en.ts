@@ -109,7 +109,6 @@ export default {
       title: 'Desktop',
       download: 'Download',
       githubDownload: 'GitHub Download',
-      cloudflareDownload: 'Cloudflare Download',
       allDownloads: 'View all release assets',
       prereq: 'Desktop builds bundle the Hermes Studio runtime.',
       downloads: [
@@ -156,7 +155,7 @@ export default {
     },
     source: {
       title: 'From Source',
-      cmd1: 'git clone https://github.com/EKKOLearnAI/hermes-web-ui.git',
+      cmd1: 'git clone https://github.com/lukaisluka/hermes-web-ui.git',
       cmd2: 'cd hermes-web-ui && npm install && npm run dev',
     },
     prereq: 'Requires Node.js >= 23',

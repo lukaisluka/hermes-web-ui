@@ -2,7 +2,7 @@
   "name": "hermes-studio",
   "version": "0.6.10",
   "description": "Hermes Studio desktop distribution with bundled Python runtime and hermes-agent",
-  "homepage": "https://hermes-studio.ai",
+  "homepage": "https://github.com/lukaisluka/hermes-web-ui",
   "author": {
     "name": "Hermes Studio Contributors",
     "email": "noreply@hermes-studio.local"

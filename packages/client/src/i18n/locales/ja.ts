@@ -182,7 +182,6 @@ export default {
   sidebar: {
     chat: 'チャット',
     search: '検索',
-    apiRelay: 'APIリレー',
     history: '履歴',
     jobs: 'ジョブ',
     models: 'モデル',
@@ -1375,7 +1374,7 @@ export default {
     new_0_6_8_4: '公式サイトと release 配布は download mirrors、Desktop release 後の website deploy、desktop smoke check cleanup により改善しました',
     new_0_6_8_5: 'Provider context length 優先、未送信 chat draft 保持、mobile layout overflow 修正、SSH File Provider custom port、nonblocking preview actions で runtime 体験を改善しました',
     new_0_6_7_1: 'Desktop アプリは既定で port 8748 を使用し、LAN アクセスとローカルブラウザからの直接アクセスに対応しました',
-    new_0_6_7_9: 'Desktop のダウンロードリンクを公式サイト https://hermes-studio.ai/ に追加し、最新インストーラーは引き続き GitHub Releases からも取得できます',
+    new_0_6_7_9: 'Desktop のダウンロードリンクを公式サイト https://github.com/lukaisluka/hermes-web-ui に追加し、最新インストーラーは引き続き GitHub Releases からも取得できます',
     new_0_6_7_2: 'MCP ツールは bridge の tool discovery 修正、MCP 管理ライフサイクル修正、管理画面のモデル別 tool visibility によりさらに整備されました',
     new_0_6_7_3: 'メッセージ一覧は empty state の中央揃え、scroll jitter、History 読み込み中のライブチャット混入を修正し、セッション別スクロール位置保持と 1.5 秒のフェードインに対応しました',
     new_0_6_7_4: 'Bridge と runtime は text/tool-call の順序保持、Profile runtime status loading 修正、Node/npm 検出改善、本番 data directory 作成スキップで安定しました',

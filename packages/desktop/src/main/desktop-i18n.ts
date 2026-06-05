@@ -29,8 +29,6 @@ type TranslationKey =
   | 'desktop.startingLocalServices'
   | 'desktop.selectRuntimeSource'
   | 'desktop.downloadFailed'
-  | 'desktop.downloadCloudflareTitle'
-  | 'desktop.downloadCloudflareDetail'
   | 'desktop.downloadGithubTitle'
   | 'desktop.downloadGithubDetail'
   | 'desktop.failedPrepareRuntime'
@@ -73,8 +71,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': 'Starting local services...',
     'desktop.selectRuntimeSource': 'Select a runtime download source to start local services.',
     'desktop.downloadFailed': 'Download failed',
-    'desktop.downloadCloudflareTitle': 'Download from Cloudflare',
-    'desktop.downloadCloudflareDetail': 'Use the Hermes Studio download proxy.',
     'desktop.downloadGithubTitle': 'Download from GitHub',
     'desktop.downloadGithubDetail': 'Use the release asset directly from GitHub.',
     'desktop.failedPrepareRuntime': 'Failed to prepare Hermes runtime',
@@ -114,8 +110,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': '正在启动本地服务...',
     'desktop.selectRuntimeSource': '请选择运行时下载源以启动本地服务。',
     'desktop.downloadFailed': '下载失败',
-    'desktop.downloadCloudflareTitle': '从 Cloudflare 下载',
-    'desktop.downloadCloudflareDetail': '使用 Hermes Studio 下载代理。',
     'desktop.downloadGithubTitle': '从 GitHub 下载',
     'desktop.downloadGithubDetail': '直接使用 GitHub Release 资源。',
     'desktop.failedPrepareRuntime': '准备 Hermes 运行时失败',
@@ -155,8 +149,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': '正在啟動本地服務...',
     'desktop.selectRuntimeSource': '請選擇運行時下載來源以啟動本地服務。',
     'desktop.downloadFailed': '下載失敗',
-    'desktop.downloadCloudflareTitle': '從 Cloudflare 下載',
-    'desktop.downloadCloudflareDetail': '使用 Hermes Studio 下載代理。',
     'desktop.downloadGithubTitle': '從 GitHub 下載',
     'desktop.downloadGithubDetail': '直接使用 GitHub Release 資源。',
     'desktop.failedPrepareRuntime': '準備 Hermes 運行時失敗',
@@ -196,8 +188,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': 'ローカルサービスを起動しています...',
     'desktop.selectRuntimeSource': 'ローカルサービスを開始するためのランタイムダウンロード元を選択してください。',
     'desktop.downloadFailed': 'ダウンロードに失敗しました',
-    'desktop.downloadCloudflareTitle': 'Cloudflare からダウンロード',
-    'desktop.downloadCloudflareDetail': 'Hermes Studio のダウンロードプロキシを使用します。',
     'desktop.downloadGithubTitle': 'GitHub からダウンロード',
     'desktop.downloadGithubDetail': 'GitHub のリリースアセットを直接使用します。',
     'desktop.failedPrepareRuntime': 'Hermes ランタイムの準備に失敗しました',
@@ -237,8 +227,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': '로컬 서비스를 시작하는 중...',
     'desktop.selectRuntimeSource': '로컬 서비스를 시작할 런타임 다운로드 소스를 선택하세요.',
     'desktop.downloadFailed': '다운로드 실패',
-    'desktop.downloadCloudflareTitle': 'Cloudflare에서 다운로드',
-    'desktop.downloadCloudflareDetail': 'Hermes Studio 다운로드 프록시를 사용합니다.',
     'desktop.downloadGithubTitle': 'GitHub에서 다운로드',
     'desktop.downloadGithubDetail': 'GitHub 릴리스 자산을 직접 사용합니다.',
     'desktop.failedPrepareRuntime': 'Hermes 런타임 준비 실패',
@@ -278,8 +266,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': 'Demarrage des services locaux...',
     'desktop.selectRuntimeSource': 'Selectionnez une source de telechargement du runtime pour demarrer les services locaux.',
     'desktop.downloadFailed': 'Echec du telechargement',
-    'desktop.downloadCloudflareTitle': 'Telecharger depuis Cloudflare',
-    'desktop.downloadCloudflareDetail': 'Utilise le proxy de telechargement Hermes Studio.',
     'desktop.downloadGithubTitle': 'Telecharger depuis GitHub',
     'desktop.downloadGithubDetail': 'Utilise directement l asset de release GitHub.',
     'desktop.failedPrepareRuntime': 'Echec de la preparation du runtime Hermes',
@@ -319,8 +305,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': 'Iniciando servicios locales...',
     'desktop.selectRuntimeSource': 'Selecciona una fuente de descarga del runtime para iniciar los servicios locales.',
     'desktop.downloadFailed': 'Error de descarga',
-    'desktop.downloadCloudflareTitle': 'Descargar desde Cloudflare',
-    'desktop.downloadCloudflareDetail': 'Usa el proxy de descarga de Hermes Studio.',
     'desktop.downloadGithubTitle': 'Descargar desde GitHub',
     'desktop.downloadGithubDetail': 'Usa directamente el recurso de release de GitHub.',
     'desktop.failedPrepareRuntime': 'No se pudo preparar el runtime de Hermes',
@@ -360,8 +344,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': 'Lokale Dienste werden gestartet...',
     'desktop.selectRuntimeSource': 'Wahlen Sie eine Runtime-Downloadquelle aus, um lokale Dienste zu starten.',
     'desktop.downloadFailed': 'Download fehlgeschlagen',
-    'desktop.downloadCloudflareTitle': 'Von Cloudflare herunterladen',
-    'desktop.downloadCloudflareDetail': 'Verwendet den Hermes Studio Download-Proxy.',
     'desktop.downloadGithubTitle': 'Von GitHub herunterladen',
     'desktop.downloadGithubDetail': 'Verwendet das Release-Asset direkt von GitHub.',
     'desktop.failedPrepareRuntime': 'Hermes Runtime konnte nicht vorbereitet werden',
@@ -401,8 +383,6 @@ const translations: Record<DesktopLocale, Record<TranslationKey, string>> = {
     'desktop.startingLocalServices': 'Iniciando servicos locais...',
     'desktop.selectRuntimeSource': 'Selecione uma fonte de download do runtime para iniciar os servicos locais.',
     'desktop.downloadFailed': 'Falha no download',
-    'desktop.downloadCloudflareTitle': 'Baixar pelo Cloudflare',
-    'desktop.downloadCloudflareDetail': 'Usa o proxy de download do Hermes Studio.',
     'desktop.downloadGithubTitle': 'Baixar pelo GitHub',
     'desktop.downloadGithubDetail': 'Usa diretamente o asset de release do GitHub.',
     'desktop.failedPrepareRuntime': 'Falha ao preparar o runtime Hermes',

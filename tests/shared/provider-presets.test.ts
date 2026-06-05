@@ -8,7 +8,6 @@ import { PROVIDER_ENV_MAP } from '../../packages/server/src/services/config-help
 
 const OPENAI_CODEX_PROVIDER = 'openai-codex'
 const COPILOT_PROVIDER = 'copilot'
-const FUN_CODEX_PROVIDER = 'fun-codex'
 const KIMI_CODING_PROVIDER = 'kimi-coding'
 const KIMI_CODING_CN_PROVIDER = 'kimi-coding-cn'
 const MINIMAX_PROVIDER = 'minimax'
@@ -25,11 +24,6 @@ function modelsForProvider(providerPresets: Array<{ value: string; models: strin
 }
 
 describe('provider presets', () => {
-  it('routes apikey.fun Codex through the Responses transport', () => {
-    const preset = SERVER_PROVIDER_PRESETS.find((candidate) => candidate.value === FUN_CODEX_PROVIDER)
-    expect(preset?.api_mode).toBe('codex_responses')
-  })
-
   it('lists GPT-5.5 for OpenAI Codex', () => {
     expect(modelsForProvider(SERVER_PROVIDER_PRESETS, OPENAI_CODEX_PROVIDER)).toContain(GPT_5_5_MODEL)
   })

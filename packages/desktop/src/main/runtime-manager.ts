@@ -29,12 +29,11 @@ import {
 import { extractTarGzipArchive } from './runtime-archive'
 import { t } from './desktop-i18n'
 
-const DEFAULT_RUNTIME_BASE_URL = 'https://download.ekkolearnai.com'
-const DEFAULT_RUNTIME_GITHUB_REPO = 'EKKOLearnAI/hermes-web-ui'
+const DEFAULT_RUNTIME_GITHUB_REPO = 'lukaisluka/hermes-web-ui'
 const RUNTIME_MANIFEST_NAME = 'runtime-manifest.json'
 const PACKAGED_RUNTIME_RELEASE_NAME = 'runtime-release.json'
 
-export type RuntimeDownloadSource = 'cf' | 'github'
+export type RuntimeDownloadSource = 'github'
 
 type RuntimeManifest = {
   schema: number
@@ -70,11 +69,8 @@ export type RuntimeProgress = {
 
 type RuntimeProgressHandler = (progress: RuntimeProgress) => void
 
-function runtimeDownloadSource(source?: RuntimeDownloadSource): RuntimeDownloadSource | null {
-  if (source) return source
-  const value = process.env.HERMES_DESKTOP_RUNTIME_SOURCE?.trim().toLowerCase()
-  if (value === 'github' || value === 'cf') return value
-  return null
+function runtimeDownloadSource(source?: RuntimeDownloadSource): RuntimeDownloadSource {
+  return source || 'github'
 }
 
 function requiredRuntimeFiles(root: string): string[] {
@@ -151,22 +147,22 @@ export function cachedRuntimeNeedsPackagedReleaseUpdate(): boolean {
   return match === false
 }
 
-function runtimeAssetUrl(assetName: string, tag: string, source: RuntimeDownloadSource): string {
-  if (source === 'github') {
-    const repo = process.env.HERMES_DESKTOP_RUNTIME_REPO?.trim() || DEFAULT_RUNTIME_GITHUB_REPO
-    if (tag === 'latest') {
-      return `https://github.com/${repo}/releases/latest/download/${encodeURIComponent(assetName)}`
+function runtimeAssetUrl(assetName: string, tag: string, _source: RuntimeDownloadSource): string {
+  const template = process.env.HERMES_DESKTOP_RUNTIME_BASE_URL?.trim()
+  if (template) {
+    if (template.includes('{asset}') || template.includes('{tag}')) {
+      return template
+        .replace(/\{asset\}/g, encodeURIComponent(assetName))
+        .replace(/\{tag\}/g, encodeURIComponent(tag))
     }
-    return `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(assetName)}`
+    return `${template.replace(/\/$/, '')}/${encodeURIComponent(tag)}/${encodeURIComponent(assetName)}`
   }
 
-  const template = process.env.HERMES_DESKTOP_RUNTIME_BASE_URL?.trim() || DEFAULT_RUNTIME_BASE_URL
-  if (template.includes('{asset}') || template.includes('{tag}')) {
-    return template
-      .replace(/\{asset\}/g, encodeURIComponent(assetName))
-      .replace(/\{tag\}/g, encodeURIComponent(tag))
+  const repo = process.env.HERMES_DESKTOP_RUNTIME_REPO?.trim() || DEFAULT_RUNTIME_GITHUB_REPO
+  if (tag === 'latest') {
+    return `https://github.com/${repo}/releases/latest/download/${encodeURIComponent(assetName)}`
   }
-  return `${template.replace(/\/$/, '')}/${encodeURIComponent(tag)}/${encodeURIComponent(assetName)}`
+  return `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(assetName)}`
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -191,10 +187,6 @@ async function resolveRuntimeDescriptor(source?: RuntimeDownloadSource): Promise
   const downloadSource = runtimeDownloadSource(source)
   const platformManifestName = `hermes-runtime-${runtimePlatformKey()}.json`
   const manifestOverride = process.env.HERMES_DESKTOP_RUNTIME_MANIFEST_URL?.trim()
-  if (!downloadSource && !manifestOverride) {
-    throw new Error('Hermes runtime download source is not selected')
-  }
-
   const candidates = manifestOverride
     ? [{ tag: '', url: manifestOverride }]
     : releaseTagCandidates().map(tag => ({ tag, url: runtimeAssetUrl(platformManifestName, tag, downloadSource!) }))
@@ -206,9 +198,6 @@ async function resolveRuntimeDescriptor(source?: RuntimeDownloadSource): Promise
       const manifest = await fetchJson<RuntimeManifest>(candidate.url)
       if (!manifest.asset?.name) {
         throw new Error(`runtime manifest is missing asset.name: ${candidate.url}`)
-      }
-      if (!manifest.asset.url && !downloadSource) {
-        throw new Error(`runtime manifest is missing asset.url and no download source was selected: ${candidate.url}`)
       }
       return {
         name: manifest.asset.name,

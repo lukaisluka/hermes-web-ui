@@ -182,7 +182,6 @@ export default {
   sidebar: {
     chat: '對話',
     search: '搜尋',
-    apiRelay: '中轉站',
     history: '歷史',
     jobs: '任務',
     kanban: '看板',
@@ -1603,7 +1602,7 @@ export default {
     new_0_6_8_4: '官網與發佈鏈路改進：新增下載鏡像，桌面 release 後再部署官網，並清理桌面 smoke check 流程',
     new_0_6_8_5: '執行體驗繼續優化：優先使用 provider 上下文長度、保留未送出草稿、修復行動端版面溢出、SSH 檔案 Provider 自訂連接埠和非阻塞預覽操作',
     new_0_6_7_1: '桌面版預設使用 8748 連接埠，支援區域網路內存取，也可以直接用本機瀏覽器開啟 Web UI',
-    new_0_6_7_9: '桌面端下載入口已補充到官網 https://hermes-studio.ai/，也可以繼續從 GitHub Releases 取得最新安裝包',
+    new_0_6_7_9: '桌面端下載入口已補充到官網 https://github.com/lukaisluka/hermes-web-ui，也可以繼續從 GitHub Releases 取得最新安裝包',
     new_0_6_7_2: 'MCP 工具鏈繼續完善：修復 bridge 工具發現與 MCP 管理生命週期，並在管理頁支援按模型控制工具可見性',
     new_0_6_7_3: '訊息列表體驗優化：修復空狀態置中、捲動抖動、歷史會話載入串訊息，並在切換會話時保留捲動位置與 1.5 秒淡入效果',
     new_0_6_7_4: 'Bridge 與執行狀態更穩定：保持文字和 tool-call 順序、修復 Profile runtime 狀態載入、改進 Node/npm 偵測，並避免正式環境自動建立資料目錄',

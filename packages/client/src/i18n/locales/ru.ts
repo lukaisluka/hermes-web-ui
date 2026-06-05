@@ -108,7 +108,6 @@ export default {
   sidebar: {
     chat: 'Чат',
     search: 'Поиск',
-    apiRelay: 'Ретранслятор API',
     history: 'История',
     jobs: 'Задачи',
     kanban: 'Канбан',

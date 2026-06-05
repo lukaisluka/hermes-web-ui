@@ -15,17 +15,15 @@ const activeTab = ref<'desktop' | 'npm' | 'docker' | 'source'>('desktop')
 
 const releaseVersion = __APP_VERSION__.replace(/^v/, '')
 const releaseTag = `v${releaseVersion}`
-const releaseBaseUrl = 'https://github.com/EKKOLearnAI/hermes-web-ui/releases'
+const releaseBaseUrl = 'https://github.com/lukaisluka/hermes-web-ui/releases'
 const releaseUrl = `${releaseBaseUrl}/tag/${releaseTag}`
 const githubDownloadUrl = `${releaseBaseUrl}/download/${releaseTag}`
-const cloudflareDownloadUrl = `https://download.ekkolearnai.com/${releaseTag}`
 const desktopDownloads = computed(() =>
   (tm('install.desktop.downloads') as DesktopDownload[]).map((item) => {
     const assetName = `Hermes.Studio-${releaseVersion}-${item.assetSuffix}`
     return {
       ...item,
       githubHref: `${githubDownloadUrl}/${assetName}`,
-      cloudflareHref: `${cloudflareDownloadUrl}/${assetName}`,
     }
   }),
 )
@@ -72,14 +70,6 @@ function copyText(text: string) {
                 rel="noopener"
               >
                 {{ t('install.desktop.githubDownload') }}
-              </a>
-              <a
-                class="download-action"
-                :href="item.cloudflareHref"
-                target="_blank"
-                rel="noopener"
-              >
-                {{ t('install.desktop.cloudflareDownload') }}
               </a>
             </span>
           </div>

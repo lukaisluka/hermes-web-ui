@@ -461,9 +461,9 @@ describe('coding agent launch preparation', () => {
 
   it('adapts Claude Code streaming requests to the Responses API for codex_responses providers', async () => {
     const target = registerClaudeCodeProxyTarget({
-      provider: 'fun-codex',
+      provider: 'custom-responses',
       model: 'gpt-5.5',
-      baseUrl: 'https://api.apikey.fun/v1',
+      baseUrl: 'https://responses.example.com/v1',
       apiKey: 'sk-upstream',
       apiMode: 'codex_responses',
     })
@@ -485,7 +485,7 @@ describe('coding agent launch preparation', () => {
 
     await claudeProxyMessages(ctx)
 
-    expect(fetchMock).toHaveBeenCalledWith('https://api.apikey.fun/v1/responses', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('https://responses.example.com/v1/responses', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({ Authorization: 'Bearer sk-upstream' }),
     }))
@@ -580,9 +580,9 @@ describe('coding agent launch preparation', () => {
 
   it('passes Anthropic Messages providers through the local proxy without exposing upstream credentials', async () => {
     const target = registerClaudeCodeProxyTarget({
-      provider: 'fun-claude',
+      provider: 'custom-anthropic',
       model: 'claude-sonnet-4-6',
-      baseUrl: 'https://api.apikey.fun',
+      baseUrl: 'https://anthropic.example.com',
       apiKey: 'sk-upstream',
       apiMode: 'anthropic_messages',
     })
@@ -605,7 +605,7 @@ describe('coding agent launch preparation', () => {
 
     await claudeProxyMessages(ctx)
 
-    expect(fetchMock).toHaveBeenCalledWith('https://api.apikey.fun/v1/messages', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('https://anthropic.example.com/v1/messages', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({
         Authorization: 'Bearer sk-upstream',

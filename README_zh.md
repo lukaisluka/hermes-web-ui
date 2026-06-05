@@ -10,17 +10,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/EKKOLearnAI/hermes-web-ui/releases/latest">下载 Hermes Studio 桌面版</a>
+  <a href="https://github.com/lukaisluka/hermes-web-ui/releases/latest">下载 Hermes Studio 桌面版</a>
   ·
   <code>npm install -g hermes-web-ui && hermes-web-ui start</code>
 </p>
 
 <p align="center">
-  <img src="https://github.com/EKKOLearnAI/hermes-web-ui/blob/main/packages/client/src/assets/image1.png" alt="Hermes Web UI 演示" width="680"/>
+  <img src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/image1.png" alt="Hermes Web UI 演示" width="680"/>
 </p>
 
 <p align="center">
-  <img src="https://github.com/EKKOLearnAI/hermes-web-ui/blob/main/packages/client/src/assets/image2.png" alt="Hermes Web UI 演示" width="680"/>
+  <img src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/image2.png" alt="Hermes Web UI 演示" width="680"/>
 </p>
 
 <p align="center">
@@ -28,13 +28,13 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/EKKOLearnAI/hermes-web-ui/blob/main/packages/client/src/assets/video.mp4?raw=true" width="360" controls></video>
+  <video src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/video.mp4?raw=true" width="360" controls></video>
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/hermes-web-ui"><img src="https://img.shields.io/npm/v/hermes-web-ui?style=flat-square&color=blue" alt="npm 版本"/></a>
-  <a href="https://github.com/EKKOLearnAI/hermes-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/hermes-web-ui?style=flat-square" alt="许可证"/></a>
-  <a href="https://github.com/EKKOLearnAI/hermes-web-ui/stargazers"><img src="https://img.shields.io/github/stars/EKKOLearnAI/hermes-web-ui?style=flat-square" alt="Star"/></a>
+  <a href="https://github.com/lukaisluka/hermes-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/hermes-web-ui?style=flat-square" alt="许可证"/></a>
+  <a href="https://github.com/lukaisluka/hermes-web-ui/stargazers"><img src="https://img.shields.io/github/stars/lukaisluka/hermes-web-ui?style=flat-square" alt="Star"/></a>
 </p>
 
 ---
@@ -183,7 +183,7 @@ hermes-web-ui reset-default-login
 
 ### 桌面应用（推荐）
 
-从 [GitHub Releases](https://github.com/EKKOLearnAI/hermes-web-ui/releases/latest)
+从 [GitHub Releases](https://github.com/lukaisluka/hermes-web-ui/releases/latest)
 下载最新的 **Hermes Studio** 桌面安装包。
 
 桌面版会发布 macOS、Windows 和 Linux 构建；适用时会区分不同 CPU 架构。
@@ -209,10 +209,10 @@ hermes-web-ui start
 单容器部署，内置 Hermes Agent 运行时：
 
 ```bash
-# 使用预构建镜像（推荐）
-WEBUI_IMAGE=ekkoye8888/hermes-web-ui docker compose up -d
+# 构建本地镜像
+docker compose build && docker compose up -d
 
-# 或从源码构建
+# 或使用一条命令构建并启动
 docker compose up -d --build
 
 docker compose logs -f hermes-webui
@@ -274,7 +274,7 @@ Web UI 启动后端聊天能力时，会优先使用包含 `run_agent.py` 的源
 | `HERMES_BRIDGE_TOOLSETS` | profile/默认值 | bridge 运行时的 toolset 覆盖。 |
 | `HERMES_BRIDGE_MAX_TURNS` | profile/默认值 | bridge 运行时的最大轮数覆盖。 |
 | `HERMES_BRIDGE_SUPPRESS_PLATFORM_HINT` | `cli` | 控制传给 Hermes Agent 的 bridge platform hint suppression。 |
-| `HERMES_OPENROUTER_APP_REFERER` | `https://hermes-studio.ai` | bridge 运行发送给 OpenRouter 的 attribution referer。 |
+| `HERMES_OPENROUTER_APP_REFERER` | `https://github.com/lukaisluka/hermes-web-ui` | bridge 运行发送给 OpenRouter 的 attribution referer。 |
 | `HERMES_OPENROUTER_APP_TITLE` | `Hermes Web UI` | bridge 运行发送给 OpenRouter 的 attribution title。 |
 | `HERMES_OPENROUTER_APP_CATEGORIES` | `cli-agent,personal-agent` | bridge 运行发送给 OpenRouter 的 attribution categories。 |
 | `HERMES_WEB_UI_MANAGED_GATEWAY` | 由平台/运行环境决定 | 强制启用旧 gateway 进程托管；设为 `1`、`true`、`yes` 或 `on` 开启。 |
@@ -317,7 +317,7 @@ Web UI 启动后端聊天能力时，会优先使用包含 `run_agent.py` 的源
 ## 开发
 
 ```bash
-git clone https://github.com/EKKOLearnAI/hermes-web-ui.git
+git clone https://github.com/lukaisluka/hermes-web-ui.git
 cd hermes-web-ui
 npm install
 npm run dev
@@ -357,9 +357,9 @@ BFF 层负责：Socket.IO 聊天流式推送、Hermes agent bridge、按 Profile
 
 ## Star 历史
 
-[![Star 历史图表](https://api.star-history.com/svg?repos=EKKOLearnAI/hermes-web-ui&type=Date)](https://star-history.com/#EKKOLearnAI/hermes-web-ui&Date)
+[![Star 历史图表](https://api.star-history.com/svg?repos=lukaisluka/hermes-web-ui&type=Date)](https://star-history.com/#lukaisluka/hermes-web-ui&Date)
 
-<!-- 如上方图表未加载，可访问 https://star-history.com/#EKKOLearnAI/hermes-web-ui -->
+<!-- 如上方图表未加载，可访问 https://star-history.com/#lukaisluka/hermes-web-ui -->
 
 ## 许可证
 

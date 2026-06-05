@@ -109,7 +109,6 @@ export default {
       title: '桌面版',
       download: '下载',
       githubDownload: 'GitHub 下载',
-      cloudflareDownload: 'Cloudflare 下载',
       allDownloads: '查看全部发布文件',
       prereq: '桌面版已内置 Hermes Studio 运行时。',
       downloads: [
@@ -156,7 +155,7 @@ export default {
     },
     source: {
       title: '源码安装',
-      cmd1: 'git clone https://github.com/EKKOLearnAI/hermes-web-ui.git',
+      cmd1: 'git clone https://github.com/lukaisluka/hermes-web-ui.git',
       cmd2: 'cd hermes-web-ui && npm install && npm run dev',
     },
     prereq: '需要 Node.js >= 23',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, nextTick } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { NModal, NForm, NFormItem, NInput, NInputNumber, NButton, NSelect, NRadioGroup, NRadioButton, useMessage, useDialog } from 'naive-ui'
 import { useModelsStore } from '@/stores/hermes/models'
 import { useI18n } from 'vue-i18n'
@@ -9,7 +9,6 @@ import CopilotLoginModal from './CopilotLoginModal.vue'
 import XaiOAuthLoginModal from './XaiOAuthLoginModal.vue'
 import { checkCopilotToken, enableCopilot, type CopilotTokenSource } from '@/api/hermes/copilot-auth'
 import { fetchProviderModels } from '@/api/hermes/system'
-import { inferApiKeyFunPresetProvider, isApiKeyFunBaseUrl, type ApiKeyFunPresetProvider } from '@/utils/providerBaseUrl'
 
 const { t } = useI18n()
 
@@ -49,7 +48,6 @@ const COPILOT_KEY = 'copilot'
 const CLIPROXYAPI_KEY = 'cliproxyapi'
 const XAI_OAUTH_KEY = 'xai-oauth'
 const ALIBABA_CODING_KEY = 'alibaba-coding-plan'
-const CUSTOM_STORED_PRESET_KEYS = new Set(['fun-codex', 'fun-claude'])
 const ALIBABA_CODING_REGIONS = {
   intl: 'https://coding-intl.dashscope.aliyuncs.com/v1',
   cn: 'https://coding.dashscope.aliyuncs.com/v1',
@@ -80,38 +78,6 @@ const canFetchProviderCatalog = computed(() =>
     !isXaiOAuth.value
   )),
 )
-
-const FUN_LINK_MAP: Record<string, string> = {
-  'fun-codex': 'https://apikey.fun/register?aff=LIBAPI',
-  'fun-claude': 'https://apikey.fun/register?aff=LIBAPI',
-}
-
-const funProviderLink = computed(() => selectedPreset.value ? FUN_LINK_MAP[selectedPreset.value] || '' : '')
-
-async function switchToApiKeyFunPreset(providerKey: ApiKeyFunPresetProvider, preferredModel: string) {
-  const apiKey = formData.value.api_key
-  const contextLength = formData.value.context_length
-  providerType.value = 'preset'
-  await nextTick()
-  selectedPreset.value = providerKey
-  await nextTick()
-  formData.value.api_key = apiKey
-  formData.value.context_length = contextLength
-  if (preferredModel) {
-    if (!modelOptions.value.some(option => option.value === preferredModel)) {
-      modelOptions.value = [{ label: preferredModel, value: preferredModel }, ...modelOptions.value]
-    }
-    formData.value.model = preferredModel
-  }
-}
-
-async function routeApiKeyFunCustomProvider(model: string) {
-  if (providerType.value !== 'custom') return
-  if (!isApiKeyFunBaseUrl(formData.value.base_url)) return
-  const providerKey = inferApiKeyFunPresetProvider(model)
-  if (!providerKey) return
-  await switchToApiKeyFunPreset(providerKey, model)
-}
 
 function autoGenerateName(url: string): string {
   const clean = url.replace(/^https?:\/\//, '').replace(/\/v1\/?$/, '')
@@ -160,10 +126,6 @@ watch(() => formData.value.base_url, (url) => {
   }
 })
 
-watch(() => formData.value.model, (model) => {
-  void routeApiKeyFunCustomProvider(model)
-})
-
 watch(providerType, () => {
   modelOptions.value = []
   formData.value = { name: '', base_url: '', api_key: '', model: '', context_length: null }
@@ -186,9 +148,7 @@ async function fetchModels() {
   fetchingModels.value = true
   try {
     const provider = providerType.value === 'preset'
-      ? selectedPreset.value && CUSTOM_STORED_PRESET_KEYS.has(selectedPreset.value)
-        ? customProviderKey(selectedPreset.value)
-        : selectedPreset.value || undefined
+      ? selectedPreset.value || undefined
       : formData.value.name.trim()
         ? customProviderKey(formData.value.name)
         : undefined
@@ -259,21 +219,13 @@ async function handleSave() {
   loading.value = true
   try {
     const contextLength = formData.value.context_length ?? undefined
-    const apiKeyFunPreset = providerType.value === 'custom' && isApiKeyFunBaseUrl(formData.value.base_url)
-      ? inferApiKeyFunPresetProvider(formData.value.model)
-      : null
     const providerKey = providerType.value === 'preset'
       ? selectedPreset.value
-      : apiKeyFunPreset
-    const presetProvider = apiKeyFunPreset
-      ? modelsStore.allProviders.find(group => group.provider === apiKeyFunPreset)
       : null
-    const baseUrl = presetProvider?.base_url || formData.value.base_url.trim()
-    const providerName = presetProvider?.label || formData.value.name.trim()
 
     await modelsStore.addProvider({
-      name: providerName,
-      base_url: baseUrl,
+      name: formData.value.name.trim(),
+      base_url: formData.value.base_url.trim(),
       api_key: formData.value.api_key.trim(),
       model: formData.value.model,
       context_length: contextLength,
@@ -415,12 +367,6 @@ function handleClose() {
           :placeholder="t('models.chooseProvider')"
           filterable
         />
-        <div v-if="selectedPreset && funProviderLink" class="fun-provider-hint">
-          <a :href="funProviderLink" target="_blank" rel="noopener noreferrer">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            {{ t('models.getApiKey') }}
-          </a>
-        </div>
       </NFormItem>
 
       <NFormItem v-if="providerType === 'custom'" :label="t('models.name')">

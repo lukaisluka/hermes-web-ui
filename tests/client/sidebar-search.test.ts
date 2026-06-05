@@ -237,7 +237,6 @@ describe('AppSidebar search entry', () => {
       'sidebar.performance',
       'sidebar.codingAgents',
       'sidebar.versionPreview',
-      'sidebar.apiRelay',
     ]) {
       expect(itemLabels).not.toContain(forbidden)
     }

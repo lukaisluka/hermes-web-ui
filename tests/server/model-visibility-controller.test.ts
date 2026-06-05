@@ -52,7 +52,7 @@ vi.mock('../../packages/server/src/services/config-helpers', () => ({
   fetchProviderModels: mockFetchProviderModels,
   buildModelGroups: mockBuildModelGroups,
   PROVIDER_ENV_MAP: {
-    'fun-codex': { api_key_env: '', base_url_env: '' },
+    'custom-responses': { api_key_env: '', base_url_env: '' },
     deepseek: { api_key_env: 'DEEPSEEK_API_KEY', base_url_env: 'DEEPSEEK_BASE_URL' },
     lmstudio: { api_key_env: 'LM_API_KEY', base_url_env: 'LM_BASE_URL' },
     'xai-oauth': { api_key_env: '', base_url_env: '' },
@@ -69,9 +69,9 @@ vi.mock('../../packages/server/src/shared/providers', () => ({
   }),
   PROVIDER_PRESETS: [
     {
-      value: 'fun-codex',
-      label: 'Codex-apikey.fun',
-      base_url: 'https://api.apikey.fun/v1',
+      value: 'custom-responses',
+      label: 'Custom Responses',
+      base_url: 'https://responses.example.com/v1',
       models: ['gpt-5.5', 'gpt-5.4'],
       builtin: true,
     },
@@ -351,10 +351,10 @@ describe('models controller — model visibility', () => {
 
   it('marks custom-prefixed providers as builtin when their provider key matches a preset', async () => {
     mockReadConfigYamlForProfile.mockResolvedValue({
-      model: { default: 'gpt-5.5', provider: 'custom:fun-codex' },
+      model: { default: 'gpt-5.5', provider: 'custom:custom-responses' },
       custom_providers: [
         {
-          name: 'fun-codex',
+          name: 'custom-responses',
           base_url: 'https://proxy.example.com/v1',
           model: 'gpt-5.5',
           api_key: 'sk-test',
@@ -368,7 +368,7 @@ describe('models controller — model visibility', () => {
 
     expect(ctx.body.groups).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        provider: 'custom:fun-codex',
+        provider: 'custom:custom-responses',
         builtin: true,
         models: ['gpt-5.5', 'gpt-5.4'],
       }),

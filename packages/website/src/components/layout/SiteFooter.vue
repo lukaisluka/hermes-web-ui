@@ -19,7 +19,7 @@ const { t } = useI18n()
         <p class="footer-meta">{{ t('footer.license') }}</p>
         <a
           class="footer-github"
-          href="https://github.com/EKKOLearnAI/hermes-web-ui"
+          href="https://github.com/lukaisluka/hermes-web-ui"
           target="_blank"
           rel="noopener"
         >

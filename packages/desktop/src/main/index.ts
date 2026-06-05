@@ -246,19 +246,12 @@ function runtimeSourceHtml(errorMessage?: string): string {
 <p class="label">${escapeHtml(t('desktop.selectRuntimeSource'))}</p>
 ${errorBlock}
 <div class="actions">
-  <button id="cf">
-    <span class="button-title">${escapeHtml(t('desktop.downloadCloudflareTitle'))}</span>
-    <span class="button-detail">${escapeHtml(t('desktop.downloadCloudflareDetail'))}</span>
-  </button>
   <button id="github">
     <span class="button-title">${escapeHtml(t('desktop.downloadGithubTitle'))}</span>
     <span class="button-detail">${escapeHtml(t('desktop.downloadGithubDetail'))}</span>
   </button>
 </div>
 <script>
-  document.getElementById('cf')?.addEventListener('click', () => {
-    window.hermesDesktop?.retryBootstrap?.('cf')
-  })
   document.getElementById('github')?.addEventListener('click', () => {
     window.hermesDesktop?.retryBootstrap?.('github')
   })
@@ -269,7 +262,7 @@ ${errorBlock}
 
 function envRuntimeDownloadSource(): RuntimeDownloadSource | undefined {
   const source = process.env.HERMES_DESKTOP_RUNTIME_SOURCE?.trim().toLowerCase()
-  return source === 'cf' || source === 'github' ? source : undefined
+  return source === 'github' ? source : undefined
 }
 
 function formatBytes(bytes: number): string {
@@ -320,14 +313,9 @@ async function bootstrap(source?: RuntimeDownloadSource) {
     const runtimeReady = isDesktopRuntimeReady()
     const packagedRuntimeUpdate = app.isPackaged && runtimeReady && cachedRuntimeNeedsPackagedReleaseUpdate()
     const shouldCheckRuntime = !runtimeReady || forceUpdate || runtimeUrlOverride || manifestOverride || packagedRuntimeUpdate
-    const runtimeSource = selectedSource || (packagedRuntimeUpdate ? 'cf' : undefined)
+    const runtimeSource = selectedSource || 'github'
 
     if (shouldCheckRuntime) {
-      if (!runtimeSource && !runtimeUrlOverride && !manifestOverride) {
-        if (mainWindow) await mainWindow.loadURL(runtimeSourceHtml())
-        isBootstrapping = false
-        return
-      }
       await ensureDesktopRuntime(updateSplash, runtimeSource)
     }
   } catch (err) {
@@ -370,7 +358,7 @@ ipcMain.handle('hermes-desktop:retry-bootstrap', async (_event, source?: Runtime
     await mainWindow?.loadURL(serverUrl)
     return
   }
-  const selectedSource = source === 'cf' || source === 'github' ? source : undefined
+  const selectedSource = source === 'github' ? source : undefined
   await mainWindow?.loadURL(splashHtml())
   await bootstrap(selectedSource)
 })
