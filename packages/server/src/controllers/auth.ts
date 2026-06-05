@@ -370,8 +370,12 @@ export async function createManagedUser(ctx: Context) {
     profiles: role === 'super_admin' ? [] : profiles,
     defaultProfile: body.defaultProfile,
   })
+  const users = listUsers()
   ctx.status = 201
-  ctx.body = { user, users: listUsers() }
+  ctx.body = {
+    user: users.find(candidate => candidate.id === user?.id) || null,
+    users,
+  }
 }
 
 /**

@@ -368,6 +368,8 @@ describe('user auth tables and middleware', () => {
     await ctrl.createManagedUser(ctx)
 
     expect(ctx.status).toBe(201)
+    expect(ctx.body.user).not.toHaveProperty('password_hash')
+    expect(ctx.body.users.every((user: any) => !Object.prototype.hasOwnProperty.call(user, 'password_hash'))).toBe(true)
     const created = users.findUserByUsername('ops')
     expect(created?.role).toBe('admin')
     expect(users.listUserProfiles(created!.id).map(profile => profile.profile_name)).toEqual(['research'])
