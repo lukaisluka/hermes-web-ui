@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/hermes/app'
 import { useChatStore } from '@/stores/hermes/chat'
 import { useProfilesStore } from '@/stores/hermes/profiles'
 import { useSettingsStore } from '@/stores/hermes/settings'
+import { isStoredProfileAdmin } from '@/api/client'
 
 const appStore = useAppStore()
 const chatStore = useChatStore()
@@ -13,6 +14,7 @@ const profilesStore = useProfilesStore()
 const settingsStore = useSettingsStore()
 const route = useRoute()
 const router = useRouter()
+const canLoadSettings = computed(() => isStoredProfileAdmin())
 
 const routeSessionId = computed(() => {
   const value = route.params.sessionId
@@ -51,7 +53,7 @@ onMounted(async () => {
   // 让聊天完成提示音不依赖用户先打开 Settings 页面。
   await Promise.all([
     profilesStore.fetchProfiles(),
-    settingsStore.fetchSettings(),
+    ...(canLoadSettings.value ? [settingsStore.fetchSettings()] : []),
   ])
   await loadRouteSession()
 })

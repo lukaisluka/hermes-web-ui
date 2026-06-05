@@ -1,7 +1,14 @@
 import { mkdtempSync, mkdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  authenticateUserToken: vi.fn(),
+  isAuthEnabled: vi.fn(async () => false),
+  isRegularUser: vi.fn(() => false),
+}))
+
 import { resolveTerminalCwd } from '../../packages/server/src/routes/hermes/terminal'
 
 const tmpRoots: string[] = []

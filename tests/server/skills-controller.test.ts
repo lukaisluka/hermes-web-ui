@@ -12,6 +12,7 @@ const mockReadConfigYamlForProfile = vi.hoisted(() => vi.fn())
 const mockSafeReadFile = vi.hoisted(() => vi.fn())
 const mockExtractDescription = vi.hoisted(() => vi.fn())
 const mockListFilesRecursive = vi.hoisted(() => vi.fn())
+const mockListUserProfiles = vi.hoisted(() => vi.fn())
 
 vi.mock('../../packages/server/src/db/hermes/sessions-db', () => ({
   getSkillUsageStatsFromDb: mockGetSkillUsageStatsFromDb,
@@ -20,6 +21,14 @@ vi.mock('../../packages/server/src/db/hermes/sessions-db', () => ({
 vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
   getActiveProfileName: mockGetActiveProfileName,
   getProfileDir: mockGetProfileDir,
+}))
+
+vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
+  listUserProfiles: mockListUserProfiles,
+}))
+
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isRegularUser: (user: any) => user?.role === 'user',
 }))
 
 vi.mock('../../packages/server/src/services/config-helpers', () => ({
@@ -67,6 +76,7 @@ describe('skills controller', () => {
       return content.split('\n').find(line => line.trim() && !line.startsWith('#'))?.trim() || ''
     })
     mockListFilesRecursive.mockResolvedValue([])
+    mockListUserProfiles.mockReturnValue([])
     mockUpdateConfigYamlForProfile.mockImplementation(async (_profile: string, updater: (config: Record<string, any>) => Record<string, any>) => updater({}))
     mockGetSkillUsageStatsFromDb.mockResolvedValue({
       period_days: 7,
@@ -99,6 +109,47 @@ describe('skills controller', () => {
     await usageStats(ctx)
 
     expect(mockGetSkillUsageStatsFromDb).toHaveBeenCalledWith(7, undefined, 'travel')
+  })
+
+  it('aggregates skill usage across every profile authorized for regular users', async () => {
+    mockListUserProfiles.mockReturnValue([{ profile_name: 'default' }, { profile_name: 'travel' }])
+    mockGetSkillUsageStatsFromDb.mockImplementation(async (_days: number, _source: unknown, profile: string) => ({
+      period_days: 7,
+      summary: {
+        total_skill_loads: profile === 'default' ? 1 : 2,
+        total_skill_edits: profile === 'default' ? 0 : 1,
+        total_skill_actions: profile === 'default' ? 1 : 3,
+        distinct_skills_used: 1,
+      },
+      by_day: [],
+      top_skills: [
+        { skill: profile === 'default' ? 'read-file' : 'write-file', view_count: profile === 'default' ? 1 : 2, manage_count: profile === 'default' ? 0 : 1, total_count: profile === 'default' ? 1 : 3, percentage: 100, last_used_at: null },
+      ],
+    }))
+    const { usageStats } = await loadController()
+    const ctx: any = { query: {}, state: { user: { id: 7, role: 'user' } }, body: null }
+
+    await usageStats(ctx)
+
+    expect(mockGetSkillUsageStatsFromDb).toHaveBeenCalledWith(7, undefined, 'default')
+    expect(mockGetSkillUsageStatsFromDb).toHaveBeenCalledWith(7, undefined, 'travel')
+    expect(ctx.body.summary).toEqual({
+      total_skill_loads: 3,
+      total_skill_edits: 1,
+      total_skill_actions: 4,
+      distinct_skills_used: 2,
+    })
+  })
+
+  it('rejects regular users reading skill usage for unauthorized profiles', async () => {
+    mockListUserProfiles.mockReturnValue([{ profile_name: 'default' }])
+    const { usageStats } = await loadController()
+    const ctx: any = { query: { profile: 'secret' }, state: { user: { id: 7, role: 'user' } }, body: null }
+
+    await usageStats(ctx)
+
+    expect(ctx.status).toBe(403)
+    expect(mockGetSkillUsageStatsFromDb).not.toHaveBeenCalled()
   })
 
   it('toggles skills in the request-scoped profile config', async () => {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TerminalPanel from './TerminalPanel.vue'
 import FilesPanel from './FilesPanel.vue'
+import { isStoredProfileAdmin } from '@/api/client'
 
 interface Props {
   show: boolean
@@ -19,11 +20,14 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 const { t } = useI18n()
+const canUseTerminal = computed(() => isStoredProfileAdmin())
 
-const activeTab = ref<'terminal' | 'files'>(props.activeTab)
+const activeTab = ref<'terminal' | 'files'>(
+  props.activeTab === 'terminal' && !canUseTerminal.value ? 'files' : props.activeTab,
+)
 
 watch(() => props.activeTab, (newVal) => {
-  if (newVal) activeTab.value = newVal
+  if (newVal) activeTab.value = newVal === 'terminal' && !canUseTerminal.value ? 'files' : newVal
 })
 
 function handleClose() {
@@ -44,6 +48,7 @@ function handleClose() {
             {{ t('drawer.files') }}
           </button>
           <button
+            v-if="canUseTerminal"
             :class="['tab-button', { active: activeTab === 'terminal' }]"
             @click="activeTab = 'terminal'"
           >
@@ -62,7 +67,7 @@ function handleClose() {
         <div v-show="activeTab === 'files'" class="drawer-pane">
           <FilesPanel />
         </div>
-        <div v-show="activeTab === 'terminal'" class="drawer-pane">
+        <div v-if="canUseTerminal" v-show="activeTab === 'terminal'" class="drawer-pane">
           <TerminalPanel :visible="activeTab === 'terminal' && show" />
         </div>
       </div>

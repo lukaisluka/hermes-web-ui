@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { setApiKey, hasApiKey } from "@/api/client";
+import { setApiKey, hasApiKey, replaceAppRoute } from "@/api/client";
 import { fetchAuthStatus, loginWithPassword } from "@/api/auth";
 
 const { t } = useI18n();
-const router = useRouter();
 
 const username = ref("");
 const password = ref("");
@@ -16,7 +14,7 @@ const showLockResetHint = ref(false);
 
 // If already has a key, try to go to main page
 if (hasApiKey()) {
-  router.replace("/hermes/chat");
+  replaceAppRoute("/hermes/chat");
 }
 
 onMounted(async () => {
@@ -44,7 +42,7 @@ async function handlePasswordLogin() {
   try {
     const sessionToken = await loginWithPassword(username.value.trim(), password.value);
     setApiKey(sessionToken);
-    router.replace("/hermes/chat");
+    replaceAppRoute("/hermes/chat");
   } catch (err: any) {
     if (err.status === 429 || err.status === 503) {
       errorMsg.value = t("login.tooManyAttempts");

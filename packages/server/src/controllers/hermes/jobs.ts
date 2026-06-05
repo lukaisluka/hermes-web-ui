@@ -4,6 +4,8 @@ import { join } from 'path'
 import { getHermesBin } from '../../services/hermes/hermes-path'
 import { getActiveProfileName, getProfileDir } from '../../services/hermes/hermes-profile'
 import { execHermesWithBin } from '../../services/hermes/hermes-process'
+import { listUserProfiles } from '../../db/hermes/users-store'
+import { isRegularUser } from '../../middleware/user-auth'
 
 const TIMEOUT_MS = 60_000
 
@@ -69,6 +71,10 @@ function readJobs(profile: string, includeDisabled = true): JobRecord[] {
 
 function findJob(profile: string, jobId: string): JobRecord | null {
   return readJobs(profile, true).find((job) => job.job_id === jobId || job.id === jobId) ?? null
+}
+
+function scopedJob(job: JobRecord | null, profile: string): JobRecord | null {
+  return job ? { ...job, profile } : null
 }
 
 function boolQuery(value: unknown, defaultValue: boolean): boolean {
@@ -154,16 +160,25 @@ function findCreatedJob(beforeJobs: JobRecord[], afterJobs: JobRecord[]): JobRec
 }
 
 export async function list(ctx: Context) {
-  const profile = resolveProfile(ctx)
+  const explicitProfile = typeof ctx.query.profile === 'string' ? ctx.query.profile.trim() : ''
   const includeDisabled = boolQuery(ctx.query.include_disabled, false)
-  ctx.body = { jobs: readJobs(profile, includeDisabled) }
+  const user = ctx.state.user
+  if (user && isRegularUser(user) && !explicitProfile) {
+    const jobs = listUserProfiles(user.id)
+      .flatMap(profile => readJobs(profile.profile_name, includeDisabled)
+        .map(job => ({ ...job, profile: profile.profile_name })))
+    ctx.body = { jobs }
+    return
+  }
+  const profile = resolveProfile(ctx)
+  ctx.body = { jobs: readJobs(profile, includeDisabled).map(job => ({ ...job, profile })) }
 }
 
 export async function get(ctx: Context) {
   const profile = resolveProfile(ctx)
   const job = findJob(profile, ctx.params.id)
   if (!job) return sendJobNotFound(ctx)
-  ctx.body = { job }
+  ctx.body = { job: scopedJob(job, profile) }
 }
 
 export async function create(ctx: Context) {
@@ -204,7 +219,7 @@ export async function create(ctx: Context) {
 
   try {
     await runHermesCron(profile, args)
-    const job = findCreatedJob(beforeJobs, readJobs(profile, true))
+    const job = scopedJob(findCreatedJob(beforeJobs, readJobs(profile, true)), profile)
     ctx.body = { job }
   } catch (error: any) {
     sendCommandError(ctx, error)
@@ -248,7 +263,7 @@ export async function update(ctx: Context) {
 
   try {
     await runHermesCron(profile, args)
-    const job = findJob(profile, ctx.params.id)
+    const job = scopedJob(findJob(profile, ctx.params.id), profile)
     if (!job) return sendJobNotFound(ctx)
     ctx.body = { job }
   } catch (error: any) {
@@ -274,7 +289,7 @@ export async function pause(ctx: Context) {
 
   try {
     await runHermesCron(profile, ['cron', 'pause', ctx.params.id])
-    const job = findJob(profile, ctx.params.id)
+    const job = scopedJob(findJob(profile, ctx.params.id), profile)
     ctx.body = { job }
   } catch (error: any) {
     sendCommandError(ctx, error)
@@ -287,7 +302,7 @@ export async function resume(ctx: Context) {
 
   try {
     await runHermesCron(profile, ['cron', 'resume', ctx.params.id])
-    const job = findJob(profile, ctx.params.id)
+    const job = scopedJob(findJob(profile, ctx.params.id), profile)
     ctx.body = { job }
   } catch (error: any) {
     sendCommandError(ctx, error)
@@ -300,7 +315,7 @@ export async function run(ctx: Context) {
 
   try {
     await runHermesCron(profile, ['cron', 'run', ctx.params.id])
-    const job = findJob(profile, ctx.params.id)
+    const job = scopedJob(findJob(profile, ctx.params.id), profile)
     ctx.body = { job }
   } catch (error: any) {
     sendCommandError(ctx, error)

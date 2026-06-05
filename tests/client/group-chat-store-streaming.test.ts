@@ -40,9 +40,14 @@ const groupChatApiMock = vi.hoisted(() => {
     clearRoomContext: vi.fn(),
   }
 })
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
 
 vi.mock('@/api/hermes/group-chat', () => groupChatApiMock)
-vi.mock('@/api/client', () => ({ getApiKey: vi.fn(() => 'test-token') }))
+vi.mock('@/api/client', () => ({
+  getApiKey: vi.fn(() => 'test-token'),
+  getActiveProfileName: vi.fn(() => 'research'),
+}))
 vi.mock('@/api/hermes/download', () => ({ getDownloadUrl: vi.fn((path: string) => `/download?path=${path}`) }))
 
 function emitSocket(event: string, payload: unknown) {
@@ -99,6 +104,31 @@ describe('group chat store streaming merge', () => {
     groupChatApiMock.socket.on.mockClear()
     groupChatApiMock.socket.emit.mockClear()
     groupChatApiMock.socket.disconnect.mockClear()
+    mockFetch.mockReset()
+  })
+
+  it('uploads group-chat attachments under the active profile', async () => {
+    const store = await createJoinedStore()
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ files: [{ name: 'note.txt', path: '/uploads/research/note.txt' }] }),
+    })
+
+    void store.sendMessage('attached', [{
+      id: 'attachment-1',
+      name: 'note.txt',
+      type: 'text/plain',
+      size: 4,
+      url: '',
+      file: new File(['note'], 'note.txt', { type: 'text/plain' }),
+    }])
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledOnce())
+
+    const [, options] = mockFetch.mock.calls[0]
+    expect(options.headers).toMatchObject({
+      Authorization: 'Bearer test-token',
+      'X-Hermes-Profile': 'research',
+    })
   })
 
   it('preserves streamed reasoning when the final message supplies content only', async () => {

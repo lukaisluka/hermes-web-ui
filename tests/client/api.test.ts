@@ -12,7 +12,7 @@ vi.mock('@/router', () => ({
   },
 }))
 
-import { getApiKey, setApiKey, clearApiKey, hasApiKey, getStoredUserRole, isStoredSuperAdmin, request } from '../../packages/client/src/api/client'
+import { getApiKey, setApiKey, clearApiKey, hasApiKey, getStoredUserRole, isStoredSuperAdmin, isStoredProfileAdmin, request } from '../../packages/client/src/api/client'
 import { getDownloadUrl } from '../../packages/client/src/api/hermes/download'
 import { uploadFiles } from '../../packages/client/src/api/hermes/files'
 import { importSkill } from '../../packages/client/src/api/hermes/skills'
@@ -62,6 +62,12 @@ describe('API Client', () => {
       setApiKey(fakeJwt({ sub: '2', role: 'admin' }))
       expect(getStoredUserRole()).toBe('admin')
       expect(isStoredSuperAdmin()).toBe(false)
+      expect(isStoredProfileAdmin()).toBe(true)
+
+      setApiKey(fakeJwt({ sub: '3', role: 'user' }))
+      expect(getStoredUserRole()).toBe('user')
+      expect(isStoredSuperAdmin()).toBe(false)
+      expect(isStoredProfileAdmin()).toBe(false)
     })
   })
 

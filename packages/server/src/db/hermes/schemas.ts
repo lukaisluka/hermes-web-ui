@@ -114,7 +114,7 @@ export const USERS_SCHEMA: Record<string, string> = {
   id: 'INTEGER PRIMARY KEY AUTOINCREMENT',
   username: 'TEXT NOT NULL UNIQUE',
   password_hash: 'TEXT NOT NULL',
-  role: "TEXT NOT NULL DEFAULT 'admin'",
+  role: "TEXT NOT NULL DEFAULT 'user'",
   status: "TEXT NOT NULL DEFAULT 'active'",
   created_at: 'INTEGER NOT NULL',
   updated_at: 'INTEGER NOT NULL',
@@ -146,6 +146,7 @@ export const GC_ROOMS_TABLE = 'gc_rooms'
 export const GC_ROOMS_SCHEMA: Record<string, string> = {
   id: 'TEXT PRIMARY KEY',
   name: 'TEXT NOT NULL',
+  profile: 'TEXT',
   inviteCode: 'TEXT UNIQUE',
   triggerTokens: 'INTEGER NOT NULL DEFAULT 100000',
   maxHistoryTokens: 'INTEGER NOT NULL DEFAULT 32000',

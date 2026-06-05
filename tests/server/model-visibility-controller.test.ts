@@ -40,6 +40,11 @@ vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
   listUserProfiles: mockListUserProfiles,
 }))
 
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isRegularUser: vi.fn(() => false),
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
+}))
+
 vi.mock('../../packages/server/src/services/config-helpers', () => ({
   readConfigYaml: mockReadConfigYaml,
   readConfigYamlForProfile: mockReadConfigYamlForProfile,

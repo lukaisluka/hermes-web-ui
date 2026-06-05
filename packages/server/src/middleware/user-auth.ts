@@ -42,6 +42,10 @@ declare module 'koa' {
 const JWT_AUDIENCE = 'hermes-web-ui'
 const DEFAULT_EXPIRES_SECONDS = 60 * 60 * 24 * 30
 
+function isUserRole(value: unknown): value is UserRole {
+  return value === 'super_admin' || value === 'admin' || value === 'user'
+}
+
 function base64UrlJson(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url')
 }
@@ -118,7 +122,7 @@ export function verifyUserJwt(token: string, secret: string, now = Date.now()): 
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf-8')) as Partial<JwtPayload>
     if (payload.type !== 'access' || payload.aud !== JWT_AUDIENCE) return null
-    if (!payload.sub || !payload.username || !payload.role || !payload.exp) return null
+    if (!payload.sub || !payload.username || !isUserRole(payload.role) || !payload.exp) return null
     if (Math.floor(now / 1000) >= payload.exp) return null
     return payload as JwtPayload
   } catch {
@@ -141,6 +145,18 @@ export function toAuthenticatedUser(user: Pick<UserRecord, 'id' | 'username' | '
     authenticated.profiles = listUserProfiles(user.id).map(profile => profile.profile_name)
   }
   return authenticated
+}
+
+export function isSuperAdmin(user: Pick<AuthenticatedUser, 'role'> | undefined | null): boolean {
+  return user?.role === 'super_admin'
+}
+
+export function isRegularUser(user: Pick<AuthenticatedUser, 'role'> | undefined | null): boolean {
+  return user?.role === 'user'
+}
+
+export function isProfileAdmin(user: Pick<AuthenticatedUser, 'role'> | undefined | null): boolean {
+  return user?.role === 'super_admin' || user?.role === 'admin'
 }
 
 export async function authenticateUserToken(token: string): Promise<AuthenticatedUser | null> {
@@ -191,9 +207,18 @@ export async function requireUserJwt(ctx: Context, next: Next): Promise<void> {
 }
 
 export async function requireSuperAdmin(ctx: Context, next: Next): Promise<void> {
-  if (ctx.state.user?.role !== 'super_admin') {
+  if (!isSuperAdmin(ctx.state.user)) {
     ctx.status = 403
     ctx.body = { error: 'Super administrator privileges are required' }
+    return
+  }
+  await next()
+}
+
+export async function requireProfileAdmin(ctx: Context, next: Next): Promise<void> {
+  if (!isProfileAdmin(ctx.state.user)) {
+    ctx.status = 403
+    ctx.body = { error: 'Administrator privileges are required' }
     return
   }
   await next()
@@ -210,6 +235,13 @@ export function resolveRequestedProfile(ctx: Context): string {
   return (headerProfile || queryProfile || bodyProfile || '').trim()
 }
 
+function isProfileOptionalForRegularUser(ctx: Context): boolean {
+  const path = String(ctx.path || '').toLowerCase()
+  return path.startsWith('/api/auth/') ||
+    path === '/api/hermes/profiles' ||
+    path === '/api/hermes/available-models'
+}
+
 export async function resolveUserProfile(ctx: Context, next: Next): Promise<void> {
   const user = ctx.state.user
   if (!user) {
@@ -217,13 +249,27 @@ export async function resolveUserProfile(ctx: Context, next: Next): Promise<void
     return
   }
 
-  const profileName = resolveRequestedProfile(ctx)
+  let profileName = resolveRequestedProfile(ctx)
+  let usedAuthorizedProfileFallback = false
+  if (!profileName && isRegularUser(user)) {
+    profileName = user.profiles?.[0] || ''
+    usedAuthorizedProfileFallback = !!profileName
+    if (!profileName) {
+      if (isProfileOptionalForRegularUser(ctx)) {
+        await next()
+        return
+      }
+      ctx.status = 403
+      ctx.body = { error: 'No profiles are available for this user' }
+      return
+    }
+  }
   if (!profileName) {
     await next()
     return
   }
 
-  if (user.role !== 'super_admin' && !userCanAccessProfile(user.id, profileName)) {
+  if (!isSuperAdmin(user) && !usedAuthorizedProfileFallback && !userCanAccessProfile(user.id, profileName)) {
     ctx.status = 403
     ctx.body = { error: `Profile "${profileName}" is not available for this user` }
     return

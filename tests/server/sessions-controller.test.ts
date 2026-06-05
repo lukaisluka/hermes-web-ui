@@ -7,12 +7,14 @@ const getConversationDetailMock = vi.fn()
 const listSessionSummariesMock = vi.fn()
 const getSessionDetailFromDbMock = vi.fn()
 const getSessionDetailFromDbWithProfileMock = vi.fn()
+const getSessionDetailPaginatedFromDbWithProfileMock = vi.fn()
 const getExactSessionDetailFromDbWithProfileMock = vi.fn()
 const getUsageStatsFromDbMock = vi.fn()
 const getSessionMock = vi.fn()
 const deleteHermesSessionForProfileMock = vi.fn()
 const localListSessionsMock = vi.fn()
 const localGetSessionDetailMock = vi.fn()
+const localGetSessionDetailPaginatedMock = vi.fn()
 const localSearchSessionsMock = vi.fn()
 const localDeleteSessionMock = vi.fn()
 const localRenameSessionMock = vi.fn()
@@ -58,6 +60,7 @@ vi.mock('../../packages/server/src/db/hermes/sessions-db', () => ({
   searchSessionSummaries: vi.fn(),
   getSessionDetailFromDb: getSessionDetailFromDbMock,
   getSessionDetailFromDbWithProfile: getSessionDetailFromDbWithProfileMock,
+  getSessionDetailPaginatedFromDbWithProfile: getSessionDetailPaginatedFromDbWithProfileMock,
   getExactSessionDetailFromDbWithProfile: getExactSessionDetailFromDbWithProfileMock,
   getUsageStatsFromDb: getUsageStatsFromDbMock,
 }))
@@ -66,6 +69,7 @@ vi.mock('../../packages/server/src/db/hermes/session-store', () => ({
   listSessions: localListSessionsMock,
   searchSessions: localSearchSessionsMock,
   getSessionDetail: localGetSessionDetailMock,
+  getSessionDetailPaginated: localGetSessionDetailPaginatedMock,
   deleteSession: localDeleteSessionMock,
   renameSession: localRenameSessionMock,
   createSession: localCreateSessionMock,
@@ -77,6 +81,11 @@ vi.mock('../../packages/server/src/db/hermes/session-store', () => ({
 
 vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
   listUserProfiles: listUserProfilesMock,
+}))
+
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isRegularUser: (user: any) => user?.role === 'user',
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
 }))
 
 vi.mock('../../packages/server/src/db/hermes/usage-store', () => ({
@@ -128,12 +137,14 @@ describe('session conversations controller', () => {
     listSessionSummariesMock.mockReset()
     getSessionDetailFromDbMock.mockReset()
     getSessionDetailFromDbWithProfileMock.mockReset()
+    getSessionDetailPaginatedFromDbWithProfileMock.mockReset()
     getExactSessionDetailFromDbWithProfileMock.mockReset()
     getUsageStatsFromDbMock.mockReset()
     getSessionMock.mockReset()
     deleteHermesSessionForProfileMock.mockReset()
     localListSessionsMock.mockReset()
     localGetSessionDetailMock.mockReset()
+    localGetSessionDetailPaginatedMock.mockReset()
     localSearchSessionsMock.mockReset()
     localDeleteSessionMock.mockReset()
     localRenameSessionMock.mockReset()
@@ -285,6 +296,49 @@ describe('session conversations controller', () => {
     await mod.list(ctx)
 
     expect(localListSessionsMock).toHaveBeenCalledWith('travel', undefined, 2000)
+  })
+
+  it('filters regular users to their own sessions inside authorized profiles', async () => {
+    listUserProfilesMock.mockReturnValue([{ profile_name: 'default' }, { profile_name: 'travel' }])
+    const baseSession = {
+      source: 'cli',
+      model: 'gpt-5',
+      title: '',
+      started_at: 1,
+      ended_at: null,
+      last_active: 3,
+      message_count: 1,
+      tool_call_count: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      reasoning_tokens: 0,
+      billing_provider: null,
+      estimated_cost_usd: 0,
+      actual_cost_usd: null,
+      cost_status: '',
+      preview: '',
+    }
+    const sessions = [
+      { ...baseSession, id: 'own-default', user_id: 7, profile: 'default' },
+      { ...baseSession, id: 'own-travel', user_id: '7', profile: 'travel' },
+      { ...baseSession, id: 'legacy', user_id: null, profile: 'default' },
+      { ...baseSession, id: 'foreign-owner', user_id: 8, profile: 'default' },
+      { ...baseSession, id: 'secret', user_id: 7, profile: 'secret' },
+    ]
+    localListSessionsMock.mockReturnValue(sessions)
+    localSearchSessionsMock.mockReturnValue(sessions)
+
+    const mod = await import('../../packages/server/src/controllers/hermes/sessions')
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'travel' } }
+    const listCtx: any = { query: {}, state, body: null }
+    await mod.list(listCtx)
+    expect(listCtx.body.sessions.map((session: any) => session.id)).toEqual(['own-default', 'own-travel'])
+
+    const searchCtx: any = { query: { q: 'mine' }, state, body: null }
+    await mod.search(searchCtx)
+    expect(searchCtx.body.results.map((session: any) => session.id)).toEqual(['own-default', 'own-travel'])
   })
 
   it('marks Hermes history sessions that already exist in the Web UI store', async () => {
@@ -603,6 +657,47 @@ describe('session conversations controller', () => {
     ])
   })
 
+  it('aggregates usage analytics across every profile authorized for regular users', async () => {
+    listUserProfilesMock.mockReturnValue([{ profile_name: 'default' }, { profile_name: 'travel' }])
+    getUsageStatsFromDbMock.mockImplementation(async (_days: number, _source: unknown, profile: string) => ({
+      input_tokens: profile === 'default' ? 5 : 7,
+      output_tokens: profile === 'default' ? 2 : 3,
+      cache_read_tokens: 1,
+      cache_write_tokens: 0,
+      reasoning_tokens: 1,
+      sessions: 1,
+      cost: profile === 'default' ? 0.01 : 0.02,
+      total_api_calls: 2,
+      by_model: [
+        {
+          model: profile === 'default' ? 'gpt-default' : 'gpt-travel',
+          input_tokens: profile === 'default' ? 5 : 7,
+          output_tokens: profile === 'default' ? 2 : 3,
+          cache_read_tokens: 1,
+          cache_write_tokens: 0,
+          reasoning_tokens: 1,
+          sessions: 1,
+        },
+      ],
+      by_day: [],
+    }))
+
+    const mod = await import('../../packages/server/src/controllers/hermes/sessions')
+    const ctx: any = { query: { days: '2' }, state: { user: { id: 7, role: 'user' } }, body: null }
+    await mod.usageStats(ctx)
+
+    expect(getUsageStatsFromDbMock).toHaveBeenCalledWith(2, undefined, 'default')
+    expect(getUsageStatsFromDbMock).toHaveBeenCalledWith(2, undefined, 'travel')
+    expect(ctx.body).toMatchObject({
+      total_input_tokens: 12,
+      total_output_tokens: 5,
+      total_sessions: 2,
+      total_cost: 0.03,
+      total_api_calls: 4,
+    })
+    expect(ctx.body.model_usage.map((row: any) => row.model)).toEqual(['gpt-travel', 'gpt-default'])
+  })
+
   it('keeps blank model usage as returned by state.db analytics', async () => {
     getLocalUsageStatsMock.mockReturnValue({
       input_tokens: 3,
@@ -654,6 +749,107 @@ describe('session conversations controller', () => {
     expect(localCreateSessionMock).not.toHaveBeenCalled()
     expect(localUpdateSessionMock).toHaveBeenCalledWith('session-1', { model: 'grok-4', provider: 'xai' })
     expect(ctx.body).toEqual({ ok: true })
+  })
+
+  it('creates missing regular-user sessions with the authenticated owner when setting a model', async () => {
+    listUserProfilesMock.mockReturnValue([{ profile_name: 'travel' }])
+    getSessionMock.mockReturnValue(null)
+
+    const mod = await import('../../packages/server/src/controllers/hermes/sessions')
+    const ctx: any = {
+      params: { id: 'new-session' },
+      query: {},
+      state: { user: { id: 7, role: 'user' }, profile: { name: 'travel' } },
+      request: { body: { model: 'grok-4', provider: 'xai' } },
+      body: null,
+    }
+    await mod.setModel(ctx)
+
+    expect(localCreateSessionMock).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'new-session',
+      profile: 'travel',
+      user_id: '7',
+    }))
+    expect(localUpdateSessionMock).toHaveBeenCalledWith('new-session', { model: 'grok-4', provider: 'xai' })
+    expect(ctx.body).toEqual({ ok: true })
+  })
+
+  it('rejects regular users reading legacy ownerless session details', async () => {
+    listUserProfilesMock.mockReturnValue([{ profile_name: 'default' }])
+    localGetSessionDetailMock.mockReturnValue({
+      id: 'legacy',
+      user_id: null,
+      profile: 'default',
+      source: 'cli',
+      messages: [],
+    })
+
+    const mod = await import('../../packages/server/src/controllers/hermes/sessions')
+    const ctx: any = {
+      params: { id: 'legacy' },
+      state: { user: { id: 7, role: 'user' } },
+      body: null,
+    }
+    await mod.get(ctx)
+
+    expect(ctx.status).toBe(403)
+    expect(ctx.body).toEqual({ error: 'Session is not available for this user' })
+  })
+
+  it('deletes a regular user session from its stored profile instead of the middleware fallback', async () => {
+    listUserProfilesMock.mockReturnValue([{ profile_name: 'research' }, { profile_name: 'travel' }])
+    getSessionMock.mockReturnValue({ id: 'owned-travel', user_id: '7', profile: 'travel' })
+    getExactSessionDetailFromDbWithProfileMock.mockResolvedValue({ id: 'owned-travel', messages: [] })
+    deleteHermesSessionForProfileMock.mockResolvedValue(true)
+    localDeleteSessionMock.mockReturnValue(true)
+
+    const mod = await import('../../packages/server/src/controllers/hermes/sessions')
+    const ctx: any = {
+      params: { id: 'owned-travel' },
+      state: { user: { id: 7, role: 'user' }, profile: { name: 'research' } },
+      body: null,
+    }
+    await mod.remove(ctx)
+
+    expect(deleteHermesSessionForProfileMock).toHaveBeenCalledWith('owned-travel', 'travel')
+    expect(ctx.body).toMatchObject({ ok: true, deleted: true })
+  })
+
+  it('paginates an owned cross-profile local session without falling back to Hermes history', async () => {
+    listUserProfilesMock.mockReturnValue([{ profile_name: 'research' }, { profile_name: 'travel' }])
+    localGetSessionDetailPaginatedMock.mockReturnValue({
+      session: {
+        id: 'owned-travel',
+        user_id: '7',
+        profile: 'travel',
+        source: 'cli',
+        model: 'gpt-5',
+        title: 'Owned',
+        started_at: 1,
+        ended_at: null,
+        last_active: 2,
+        message_count: 1,
+        input_tokens: 1,
+        output_tokens: 1,
+      },
+      messages: [{ id: 1, role: 'user', content: 'hello' }],
+      total: 1,
+      offset: 0,
+      limit: 50,
+      hasMore: false,
+    })
+
+    const mod = await import('../../packages/server/src/controllers/hermes/sessions')
+    const ctx: any = {
+      params: { id: 'owned-travel' },
+      query: {},
+      state: { user: { id: 7, role: 'user' }, profile: { name: 'research' } },
+      body: null,
+    }
+    await mod.getConversationMessagesPaginated(ctx)
+
+    expect(getSessionDetailPaginatedFromDbWithProfileMock).not.toHaveBeenCalled()
+    expect(ctx.body.session).toMatchObject({ id: 'owned-travel', profile: 'travel' })
   })
 
   it('deletes a current-profile Hermes history session even when no local Web UI session exists', async () => {

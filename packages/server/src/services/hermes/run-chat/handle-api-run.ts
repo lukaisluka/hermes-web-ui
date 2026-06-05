@@ -93,6 +93,7 @@ export async function handleApiRun(
   sessionMap: Map<string, SessionState>,
   skipUserMessage = false,
   dequeueNextQueuedRun: (socket: Socket, sessionId: string, fallbackProfile?: string) => void,
+  userId?: string | null,
 ) {
   const { input, session_id, model, provider, instructions } = data
 
@@ -145,7 +146,7 @@ export async function handleApiRun(
       if (!getSession(session_id)) {
         const previewText = extractTextForPreview(input)
         const preview = previewText.replace(/[\r\n]/g, ' ').substring(0, 100)
-        createSession({ id: session_id, profile, source: 'api_server', model, provider, title: preview })
+        createSession({ id: session_id, profile, source: 'api_server', user_id: userId, model, provider, title: preview })
       }
 
       const messageId = addMessage({
@@ -168,7 +169,7 @@ export async function handleApiRun(
       if (!getSession(session_id)) {
         const previewText = extractTextForPreview(input)
         const preview = previewText.replace(/[\r\n]/g, ' ').substring(0, 100)
-        createSession({ id: session_id, profile, source: 'api_server', model, provider, title: preview })
+        createSession({ id: session_id, profile, source: 'api_server', user_id: userId, model, provider, title: preview })
       }
       const messageId = addMessage({
         session_id,

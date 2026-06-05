@@ -137,13 +137,15 @@ export function createSession(data: {
   provider?: string
   title?: string
   workspace?: string
+  user_id?: string | null
 }): HermesSessionRow {
   const now = Math.floor(Date.now() / 1000)
   const source = data.source || 'api_server'
+  const userId = data.user_id == null ? null : String(data.user_id)
   if (!isSqliteAvailable()) {
     return {
       id: data.id, profile: data.profile || 'default', source,
-      user_id: null, model: data.model || '', provider: data.provider || '', title: data.title || null,
+      user_id: userId, model: data.model || '', provider: data.provider || '', title: data.title || null,
       started_at: now, ended_at: null, end_reason: null,
       message_count: 0, tool_call_count: 0,
       input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0,
@@ -153,9 +155,9 @@ export function createSession(data: {
   }
   const db = getDb()!
   db.prepare(
-    `INSERT INTO ${SESSIONS_TABLE} (id, profile, source, model, provider, title, started_at, last_active, workspace)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(data.id, data.profile || 'default', source, data.model || '', data.provider || '', data.title || null, now, now, data.workspace || null)
+    `INSERT INTO ${SESSIONS_TABLE} (id, profile, source, user_id, model, provider, title, started_at, last_active, workspace)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(data.id, data.profile || 'default', source, userId, data.model || '', data.provider || '', data.title || null, now, now, data.workspace || null)
   return getSession(data.id)!
 }
 

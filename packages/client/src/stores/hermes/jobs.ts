@@ -3,8 +3,8 @@ import { ref } from 'vue'
 import * as jobsApi from '@/api/hermes/jobs'
 import type { Job, CreateJobRequest, UpdateJobRequest } from '@/api/hermes/jobs'
 
-function matchId(job: Job, id: string): boolean {
-  return job.job_id === id || job.id === id
+function matchJob(job: Job, id: string, profile?: string): boolean {
+  return (job.job_id === id || job.id === id) && (!profile || job.profile === profile)
 }
 
 export const useJobsStore = defineStore('jobs', () => {
@@ -28,33 +28,33 @@ export const useJobsStore = defineStore('jobs', () => {
     return job
   }
 
-  async function updateJob(jobId: string, data: UpdateJobRequest): Promise<Job> {
-    const job = await jobsApi.updateJob(jobId, data)
-    const idx = jobs.value.findIndex(j => matchId(j, jobId))
+  async function updateJob(jobId: string, data: UpdateJobRequest, profile?: string): Promise<Job> {
+    const job = await jobsApi.updateJob(jobId, data, profile)
+    const idx = jobs.value.findIndex(j => matchJob(j, jobId, profile))
     if (idx !== -1) jobs.value[idx] = job
     return job
   }
 
-  async function deleteJob(jobId: string) {
-    await jobsApi.deleteJob(jobId)
-    jobs.value = jobs.value.filter(j => !matchId(j, jobId))
+  async function deleteJob(jobId: string, profile?: string) {
+    await jobsApi.deleteJob(jobId, profile)
+    jobs.value = jobs.value.filter(j => !matchJob(j, jobId, profile))
   }
 
-  async function pauseJob(jobId: string) {
-    const job = await jobsApi.pauseJob(jobId)
-    const idx = jobs.value.findIndex(j => matchId(j, jobId))
+  async function pauseJob(jobId: string, profile?: string) {
+    const job = await jobsApi.pauseJob(jobId, profile)
+    const idx = jobs.value.findIndex(j => matchJob(j, jobId, profile))
     if (idx !== -1) jobs.value[idx] = job
   }
 
-  async function resumeJob(jobId: string) {
-    const job = await jobsApi.resumeJob(jobId)
-    const idx = jobs.value.findIndex(j => matchId(j, jobId))
+  async function resumeJob(jobId: string, profile?: string) {
+    const job = await jobsApi.resumeJob(jobId, profile)
+    const idx = jobs.value.findIndex(j => matchJob(j, jobId, profile))
     if (idx !== -1) jobs.value[idx] = job
   }
 
-  async function runJob(jobId: string) {
-    const job = await jobsApi.runJob(jobId)
-    const idx = jobs.value.findIndex(j => matchId(j, jobId))
+  async function runJob(jobId: string, profile?: string) {
+    const job = await jobsApi.runJob(jobId, profile)
+    const idx = jobs.value.findIndex(j => matchJob(j, jobId, profile))
     if (idx !== -1) jobs.value[idx] = job
   }
 

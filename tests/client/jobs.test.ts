@@ -120,6 +120,22 @@ describe('Hermes jobs edit payloads', () => {
     })
   })
 
+  it('targets the selected job profile explicitly for cross-profile operations', async () => {
+    const returnedJob = makeJob({ profile: 'travel' })
+    localStorage.setItem('hermes_active_profile_name', 'research')
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ job: returnedJob }),
+    })
+
+    await updateJob('job-1', { name: 'renamed' }, 'travel')
+
+    const [url, options] = mockFetch.mock.calls[0]
+    expect(url).toBe('/api/hermes/jobs/job-1?profile=travel')
+    expect(options.headers['X-Hermes-Profile']).toBeUndefined()
+  })
+
   it('sends active profile header when loading job run history', async () => {
     localStorage.setItem('hermes_active_profile_name', 'research')
     mockFetch.mockResolvedValue({
@@ -134,5 +150,20 @@ describe('Hermes jobs edit payloads', () => {
     const [url, options] = mockFetch.mock.calls[0]
     expect(url).toBe('/api/cron-history?jobId=job-1')
     expect(options.headers['X-Hermes-Profile']).toBe('research')
+  })
+
+  it('loads selected cross-profile job history using an explicit profile', async () => {
+    localStorage.setItem('hermes_active_profile_name', 'research')
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ runs: [] }),
+    })
+
+    await listCronRuns('job-1', 'travel')
+
+    const [url, options] = mockFetch.mock.calls[0]
+    expect(url).toBe('/api/cron-history?jobId=job-1&profile=travel')
+    expect(options.headers['X-Hermes-Profile']).toBeUndefined()
   })
 })

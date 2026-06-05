@@ -14,7 +14,7 @@ test('renders authenticated shell and navigates between key product routes', asy
   expect(jobsRequest?.headers.authorization).toBe(`Bearer ${TEST_ACCESS_KEY}`)
   expect(jobsRequest?.headers['x-hermes-profile']).toBe('research')
   const cronHistoryRequest = api.requests.find((request) => request.pathname === '/api/cron-history')
-  expect(cronHistoryRequest?.headers['x-hermes-profile']).toBe('research')
+  expect(cronHistoryRequest?.search).toBe('?profile=research')
 
   const modelsLink = page.locator('aside.sidebar').getByRole('link', { name: /^Models$/ })
   await expect(modelsLink).toHaveAttribute('href', '#/hermes/models')

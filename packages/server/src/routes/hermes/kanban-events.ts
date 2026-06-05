@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws'
 import type { WebSocket } from 'ws'
 import type { Server as HttpServer, IncomingMessage } from 'http'
-import { authenticateUserToken, isAuthEnabled } from '../../middleware/user-auth'
+import { authenticateUserToken, isAuthEnabled, isRegularUser, isSuperAdmin, type AuthenticatedUser } from '../../middleware/user-auth'
 import { userCanAccessProfile } from '../../db/hermes/users-store'
 import { logger } from '../../services/logger'
 import * as kanbanCli from '../../services/hermes/hermes-kanban'
@@ -28,6 +28,23 @@ function streamLines(onLine: (line: string) => void) {
   }
 }
 
+export function resolveKanbanEventsProfile(user: AuthenticatedUser, requestedProfile: string): string {
+  const profile = requestedProfile.trim()
+  if (profile) {
+    if (!isSuperAdmin(user) && !userCanAccessProfile(user.id, profile)) {
+      throw new Error(`Profile "${profile}" is not available for this user`)
+    }
+    return profile
+  }
+  if (!isRegularUser(user)) return ''
+
+  const fallback = user.profiles?.[0] || ''
+  if (!fallback || !userCanAccessProfile(user.id, fallback)) {
+    throw new Error('No profiles are available for this user')
+  }
+  return fallback
+}
+
 export function setupKanbanEventsWebSocket(httpServers: HttpServer | HttpServer[]) {
   const wss = new WebSocketServer({ noServer: true })
   const servers = Array.isArray(httpServers) ? httpServers : [httpServers]
@@ -45,13 +62,13 @@ export function setupKanbanEventsWebSocket(httpServers: HttpServer | HttpServer[
           socket.destroy()
           return
         }
-        const profile = (url.searchParams.get('profile') || '').trim()
-        if (profile && user.role !== 'super_admin' && !userCanAccessProfile(user.id, profile)) {
+        try {
+          req.kanbanProfile = resolveKanbanEventsProfile(user, url.searchParams.get('profile') || '') || undefined
+        } catch {
           socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
           socket.destroy()
           return
         }
-        req.kanbanProfile = profile || undefined
       }
 
       try {

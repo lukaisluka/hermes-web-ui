@@ -29,11 +29,19 @@ export function clearApiKey() {
   localStorage.removeItem('hermes_api_key')
 }
 
+export function replaceAppRoute(path: string) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  window.location.replace(`${window.location.pathname}${window.location.search}#${normalizedPath}`)
+  // Hash-only navigation keeps the current SPA, Pinia stores, and authenticated
+  // sockets alive. Account changes must rebuild the document-level app state.
+  window.location.reload()
+}
+
 export function hasApiKey(): boolean {
   return !!getApiKey()
 }
 
-export type StoredUserRole = 'super_admin' | 'admin'
+export type StoredUserRole = 'super_admin' | 'admin' | 'user'
 
 export function getStoredUserRole(): StoredUserRole | null {
   const token = getApiKey()
@@ -43,7 +51,7 @@ export function getStoredUserRole(): StoredUserRole | null {
     const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
     const data = JSON.parse(atob(padded)) as { role?: unknown }
-    return data.role === 'super_admin' || data.role === 'admin' ? data.role : null
+    return data.role === 'super_admin' || data.role === 'admin' || data.role === 'user' ? data.role : null
   } catch {
     return null
   }
@@ -51,6 +59,11 @@ export function getStoredUserRole(): StoredUserRole | null {
 
 export function isStoredSuperAdmin(): boolean {
   return getStoredUserRole() === 'super_admin'
+}
+
+export function isStoredProfileAdmin(): boolean {
+  const role = getStoredUserRole()
+  return role === 'super_admin' || role === 'admin'
 }
 
 export function getActiveProfileName(): string | null {

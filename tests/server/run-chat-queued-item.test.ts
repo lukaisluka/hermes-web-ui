@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const handleBridgeRunMock = vi.hoisted(() => vi.fn(async () => {}))
 const handleApiRunMock = vi.hoisted(() => vi.fn(async () => {}))
+const accessMocks = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  isRegularUser: vi.fn(),
+  userCanAccessProfile: vi.fn(),
+}))
 
 vi.mock('../../packages/server/src/services/hermes/run-chat/handle-bridge-run', () => ({
   handleBridgeRun: handleBridgeRunMock,
@@ -32,7 +37,7 @@ vi.mock('../../packages/server/src/lib/llm-prompt', () => ({
 }))
 
 vi.mock('../../packages/server/src/db/hermes/session-store', () => ({
-  getSession: vi.fn(() => ({ id: 'session-1', profile: 'default', source: 'cli' })),
+  getSession: accessMocks.getSession,
 }))
 
 vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
@@ -44,10 +49,12 @@ vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
 vi.mock('../../packages/server/src/middleware/user-auth', () => ({
   authenticateUserToken: vi.fn(),
   isAuthEnabled: vi.fn(async () => false),
+  isRegularUser: accessMocks.isRegularUser,
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
 }))
 
 vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
-  userCanAccessProfile: vi.fn(() => true),
+  userCanAccessProfile: accessMocks.userCanAccessProfile,
 }))
 
 function makeServerHarness() {
@@ -74,6 +81,9 @@ function makeServerHarness() {
 describe('ChatRunSocket queued bridge runs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    accessMocks.getSession.mockReturnValue({ id: 'session-1', profile: 'default', source: 'cli' })
+    accessMocks.isRegularUser.mockReturnValue(false)
+    accessMocks.userCanAccessProfile.mockReturnValue(true)
   })
 
   it('persists normal queued bridge messages when they are dequeued', async () => {
@@ -124,5 +134,34 @@ describe('ChatRunSocket queued bridge runs', () => {
       queue_id: 'queue-plan',
     }))
     expect(call[6]).toBe(false)
+  })
+
+  it('rejects a queued regular-user run after its profile binding is revoked', async () => {
+    accessMocks.getSession.mockReturnValue({
+      id: 'session-1',
+      profile: 'research',
+      source: 'cli',
+      user_id: '7',
+    })
+    accessMocks.isRegularUser.mockImplementation((user: any) => user?.role === 'user')
+    accessMocks.userCanAccessProfile.mockReturnValue(false)
+    const { ChatRunSocket } = await import('../../packages/server/src/services/hermes/run-chat')
+    const { io, socket } = makeServerHarness()
+    socket.data.user = { id: 7, username: 'han', role: 'user', profiles: ['research'] }
+    const server = new ChatRunSocket(io as any)
+
+    ;(server as any).runQueuedItem(socket, 'session-1', {
+      queue_id: 'queue-revoked',
+      input: 'queued follow-up',
+      source: 'cli',
+      profile: 'research',
+    }, 'research')
+
+    expect(socket.emit).toHaveBeenCalledWith('run.failed', {
+      event: 'run.failed',
+      session_id: 'session-1',
+      error: 'Session is not available for this user',
+    })
+    expect(handleBridgeRunMock).not.toHaveBeenCalled()
   })
 })

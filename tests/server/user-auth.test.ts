@@ -102,6 +102,30 @@ describe('user auth tables and middleware', () => {
     expect(next).toHaveBeenCalledOnce()
   })
 
+  it('allows regular users to be associated with multiple requested profiles', async () => {
+    const { schemas, users, auth } = await initUsers()
+    const now = Date.now()
+    db.prepare(
+      `INSERT INTO ${schemas.USERS_TABLE} (username, password_hash, role, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run('han', users.hashPassword('secret'), 'user', 'active', now, now)
+    const user = users.findUserByUsername('han')!
+    db.prepare(
+      `INSERT INTO ${schemas.USER_PROFILES_TABLE} (user_id, profile_name, is_default, created_at)
+       VALUES (?, ?, 1, ?), (?, ?, 0, ?)`
+    ).run(user.id, 'research', now, user.id, 'travel', now)
+
+    const researchCtx = makeCtx({ id: user.id, username: 'han', role: 'user' }, 'research')
+    const researchNext = vi.fn(async () => {})
+    await auth.resolveUserProfile(researchCtx, researchNext)
+    expect(researchCtx.state.profile).toEqual({ name: 'research' })
+    expect(researchNext).toHaveBeenCalledOnce()
+
+    const deniedCtx = makeCtx({ id: user.id, username: 'han', role: 'user' }, 'secret')
+    await auth.resolveUserProfile(deniedCtx, vi.fn(async () => {}))
+    expect(deniedCtx.status).toBe(403)
+  })
+
   it('does not infer a profile when the frontend does not send one', async () => {
     const { auth } = await initUsers()
     const ctx = makeCtx({ id: 1, username: 'admin', role: 'super_admin' }, '')
@@ -115,6 +139,46 @@ describe('user auth tables and middleware', () => {
     await auth.requireUserProfile(ctx, vi.fn(async () => {}))
     expect(ctx.status).toBe(400)
     expect(ctx.body).toEqual({ error: 'Profile is required' })
+  })
+
+  it('uses the first authorized profile as a safe fallback for regular users', async () => {
+    const { auth } = await initUsers()
+    const ctx = makeCtx({
+      id: 3,
+      username: 'han',
+      role: 'user',
+      profiles: ['research', 'travel'],
+    }, '')
+    const next = vi.fn(async () => {})
+
+    await auth.resolveUserProfile(ctx, next)
+
+    expect(ctx.state.profile).toEqual({ name: 'research' })
+    expect(next).toHaveBeenCalledOnce()
+  })
+
+  it('rejects regular users without an authorized profile', async () => {
+    const { auth } = await initUsers()
+    const ctx = makeCtx({ id: 3, username: 'han', role: 'user', profiles: [] }, '')
+    const next = vi.fn(async () => {})
+
+    await auth.resolveUserProfile(ctx, next)
+
+    expect(ctx.status).toBe(403)
+    expect(ctx.body).toEqual({ error: 'No profiles are available for this user' })
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it('allows profileless regular users to manage their own account', async () => {
+    const { auth } = await initUsers()
+    const ctx = makeCtx({ id: 3, username: 'han', role: 'user', profiles: [] }, '')
+    ctx.path = '/api/auth/change-password'
+    const next = vi.fn(async () => {})
+
+    await auth.resolveUserProfile(ctx, next)
+
+    expect(ctx.state.profile).toBeUndefined()
+    expect(next).toHaveBeenCalledOnce()
   })
 
   it('ignores stale profile headers for the aggregate available-models endpoint', async () => {
@@ -161,6 +225,12 @@ describe('user auth tables and middleware', () => {
     expect(payload?.role).toBe('super_admin')
 
     expect(auth.verifyUserJwt(token, 'wrong', 1000)).toBeNull()
+
+    const userToken = auth.signUserJwt({ id: 2, username: 'han', role: 'user' }, 'secret', 1000)
+    expect(auth.verifyUserJwt(userToken, 'secret', 1000)?.role).toBe('user')
+
+    const invalidRoleToken = auth.signUserJwt({ id: 3, username: 'bad', role: 'owner' as any }, 'secret', 1000)
+    expect(auth.verifyUserJwt(invalidRoleToken, 'secret', 1000)).toBeNull()
   })
 
   it('authenticates JWTs passed as query tokens for download and websocket URLs', async () => {
@@ -303,6 +373,34 @@ describe('user auth tables and middleware', () => {
     expect(users.listUserProfiles(created!.id).map(profile => profile.profile_name)).toEqual(['research'])
   })
 
+  it('defaults newly managed accounts to regular users with profile bindings', async () => {
+    const { users } = await initUsers()
+    vi.doMock('../../packages/server/src/services/hermes/hermes-profile', () => ({
+      listProfileNamesFromDisk: () => ['default', 'research', 'travel'],
+    }))
+    const ctrl = await import('../../packages/server/src/controllers/auth')
+    const ctx = {
+      state: { user: { id: 1, username: 'admin', role: 'super_admin' } },
+      request: {
+        body: {
+          username: 'han',
+          password: 'secret1',
+          status: 'active',
+          profiles: ['research', 'travel'],
+        },
+      },
+      status: 200,
+      body: null,
+    } as any
+
+    await ctrl.createManagedUser(ctx)
+
+    expect(ctx.status).toBe(201)
+    const created = users.findUserByUsername('han')
+    expect(created?.role).toBe('user')
+    expect(users.listUserProfiles(created!.id).map(profile => profile.profile_name)).toEqual(['research', 'travel'])
+  })
+
   it('does not allow disabling the last active super admin', async () => {
     const { users } = await initUsers()
     const admin = users.bootstrapDefaultSuperAdmin('admin', '123456')!
@@ -333,6 +431,18 @@ describe('user auth tables and middleware', () => {
     const superCtx = makeCtx({ id: 1, username: 'admin', role: 'super_admin' }, 'default')
     const next = vi.fn(async () => {})
     await auth.requireSuperAdmin(superCtx, next)
+    expect(next).toHaveBeenCalledOnce()
+  })
+
+  it('requires profile admin for management middleware', async () => {
+    const { auth } = await initUsers()
+    const userCtx = makeCtx({ id: 3, username: 'han', role: 'user' }, 'default')
+    await auth.requireProfileAdmin(userCtx, vi.fn(async () => {}))
+    expect(userCtx.status).toBe(403)
+
+    const adminCtx = makeCtx({ id: 2, username: 'ops', role: 'admin' }, 'default')
+    const next = vi.fn(async () => {})
+    await auth.requireProfileAdmin(adminCtx, next)
     expect(next).toHaveBeenCalledOnce()
   })
 })

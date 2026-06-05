@@ -43,3 +43,22 @@ test('logs in with password through the BFF before entering the app', async ({ p
   expect(loginRequest?.postData).toBe(JSON.stringify({ username: 'playwright', password: 'correct-password' }))
   expect(api.unexpectedRequests).toEqual([])
 })
+
+test('login triggers full page reload to chat route', async ({ page }) => {
+  const api = await mockHermesApi(page)
+
+  await page.goto('/')
+  await page.getByPlaceholder('Username').fill('playwright')
+  await page.getByPlaceholder('Password').fill('correct-password')
+
+  // replaceAppRoute causes a full page navigation (window.location.replace + reload),
+  // which triggers a framenavigated event on the main frame
+  const reloadPromise = page.waitForEvent('framenavigated', frame => frame === page.mainFrame())
+  await page.getByRole('button', { name: 'Login' }).click()
+  await reloadPromise
+
+  await page.waitForLoadState('domcontentloaded')
+  await expect(page).toHaveURL(/#\/hermes\/chat$/)
+  await expect(page.evaluate(() => window.localStorage.getItem('hermes_api_key'))).resolves.toBe(TEST_ACCESS_KEY)
+  expect(api.unexpectedRequests).toEqual([])
+})

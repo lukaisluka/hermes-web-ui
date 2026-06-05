@@ -5,19 +5,25 @@ import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   selectedJobId: string | null
+  selectedJobProfile?: string | null
 }>()
 
 const emit = defineEmits<{
-  edit: [jobId: string]
-  select: [jobId: string | null]
+  edit: [jobId: string, profile?: string]
+  select: [jobId: string | null, profile?: string]
 }>()
 
 const { t } = useI18n()
 
 const jobsStore = useJobsStore()
 
-function handleSelect(jobId: string) {
-  emit('select', props.selectedJobId === jobId ? null : jobId)
+function handleSelect(jobId: string, profile?: string) {
+  const selected = props.selectedJobId === jobId && props.selectedJobProfile === profile
+  emit('select', selected ? null : jobId, selected ? undefined : profile)
+}
+
+function handleEdit(jobId: string, profile?: string) {
+  emit('edit', jobId, profile)
 }
 
 function handleDeselect() {
@@ -40,10 +46,10 @@ function handleDeselect() {
   <div v-else class="jobs-grid">
     <JobCard
       v-for="job in jobsStore.jobs"
-      :key="job.id"
+      :key="`${job.profile || 'default'}:${job.id}`"
       :job="job"
-      :selected="selectedJobId === (job.job_id || job.id)"
-      @edit="emit('edit', job.id)"
+      :selected="selectedJobId === (job.job_id || job.id) && selectedJobProfile === job.profile"
+      @edit="handleEdit"
       @select="handleSelect"
     />
   </div>

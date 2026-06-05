@@ -108,7 +108,7 @@ function envPathForProfile(profile?: string): string {
  */
 export function isSensitivePath(relativePath: string): boolean {
   const parts = relativePath.replace(/\\/g, '/').split('/')
-  const fileName = parts[parts.length - 1]
+  const fileName = parts[parts.length - 1].toLowerCase()
   return SENSITIVE_FILES.has(fileName)
 }
 

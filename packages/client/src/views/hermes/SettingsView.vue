@@ -18,13 +18,15 @@ import ModelSettings from "@/components/hermes/settings/ModelSettings.vue";
 import AccountSettings from "@/components/hermes/settings/AccountSettings.vue";
 import UserManagementSettings from "@/components/hermes/settings/UserManagementSettings.vue";
 import VoiceSettings from "@/components/hermes/settings/VoiceSettings.vue";
-import { isStoredSuperAdmin } from "@/api/client";
+import { getStoredUserRole, isStoredProfileAdmin, isStoredSuperAdmin } from "@/api/client";
 import { useProfilesStore } from "@/stores/hermes/profiles";
 
 const settingsStore = useSettingsStore();
 const profilesStore = useProfilesStore();
 const { t } = useI18n();
 const canManageUsers = isStoredSuperAdmin();
+const canManageSettings = isStoredProfileAdmin();
+const isRegularUser = getStoredUserRole() === "user";
 const route = useRoute();
 const router = useRouter();
 const activeTab = ref("account");
@@ -32,14 +34,16 @@ const activeTab = ref("account");
 const validTabs = computed(() => new Set([
   "account",
   ...(canManageUsers ? ["users"] : []),
-  "display",
-  "agent",
-  "memory",
-  "compression",
-  "session",
-  "privacy",
-  "models",
-  "voice",
+  ...(canManageSettings ? [
+    "display",
+    "agent",
+    "memory",
+    "compression",
+    "session",
+    "privacy",
+    "models",
+    "voice",
+  ] : []),
 ]));
 
 function normalizeTab(value: unknown): string {
@@ -62,6 +66,7 @@ watch(() => route.query.tab, (tab) => {
 }, { immediate: true });
 
 async function loadSettingsForProfile() {
+  if (isRegularUser) return
   if (!profilesStore.activeProfileName || profilesStore.profiles.length === 0) {
     await profilesStore.fetchProfiles();
   }
@@ -92,28 +97,28 @@ onMounted(() => {
           <NTabPane v-if="canManageUsers" name="users" :tab="t('settings.tabs.users')">
             <UserManagementSettings />
           </NTabPane>
-          <NTabPane name="display" :tab="t('settings.tabs.display')">
+          <NTabPane v-if="canManageSettings" name="display" :tab="t('settings.tabs.display')">
             <DisplaySettings />
           </NTabPane>
-          <NTabPane name="agent" :tab="t('settings.tabs.agent')">
+          <NTabPane v-if="canManageSettings" name="agent" :tab="t('settings.tabs.agent')">
             <AgentSettings />
           </NTabPane>
-          <NTabPane name="memory" :tab="t('settings.tabs.memory')">
+          <NTabPane v-if="canManageSettings" name="memory" :tab="t('settings.tabs.memory')">
             <MemorySettings />
           </NTabPane>
-          <NTabPane name="compression" :tab="t('settings.tabs.compression')">
+          <NTabPane v-if="canManageSettings" name="compression" :tab="t('settings.tabs.compression')">
             <CompressionSettings />
           </NTabPane>
-          <NTabPane name="session" :tab="t('settings.tabs.session')">
+          <NTabPane v-if="canManageSettings" name="session" :tab="t('settings.tabs.session')">
             <SessionSettings />
           </NTabPane>
-          <NTabPane name="privacy" :tab="t('settings.tabs.privacy')">
+          <NTabPane v-if="canManageSettings" name="privacy" :tab="t('settings.tabs.privacy')">
             <PrivacySettings />
           </NTabPane>
-          <NTabPane name="models" :tab="t('settings.tabs.models')">
+          <NTabPane v-if="canManageSettings" name="models" :tab="t('settings.tabs.models')">
             <ModelSettings />
           </NTabPane>
-          <NTabPane name="voice" :tab="t('settings.tabs.voice')">
+          <NTabPane v-if="canManageSettings" name="voice" :tab="t('settings.tabs.voice')">
             <VoiceSettings />
           </NTabPane>
         </NTabs>

@@ -55,6 +55,10 @@ vi.mock('../../packages/server/src/services/hermes/session-deleter', () => ({
   },
 }))
 
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
+}))
+
 import * as hermesCli from '../../packages/server/src/services/hermes/hermes-cli'
 
 describe('Profile Routes', () => {

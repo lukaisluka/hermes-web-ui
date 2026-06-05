@@ -5,12 +5,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const testState = vi.hoisted(() => ({
   profileDir: '',
+  profileDirs: {} as Record<string, string>,
   execFile: vi.fn(),
+  listUserProfiles: vi.fn(),
 }))
 
 vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
   getActiveProfileName: () => 'default',
-  getProfileDir: () => testState.profileDir || '/fake/home/.hermes',
+  getProfileDir: (profile: string) => testState.profileDirs[profile] || testState.profileDir || '/fake/home/.hermes',
+}))
+
+vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
+  listUserProfiles: testState.listUserProfiles,
+}))
+
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isRegularUser: (user: any) => user?.role === 'user',
 }))
 
 vi.mock('../../packages/server/src/services/hermes/hermes-path', () => ({
@@ -24,7 +34,7 @@ vi.mock('child_process', () => ({
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-import { update } from '../../packages/server/src/controllers/hermes/jobs'
+import { list, update } from '../../packages/server/src/controllers/hermes/jobs'
 
 function createMockCtx(overrides: Record<string, any> = {}) {
   const ctx: any = {
@@ -54,6 +64,8 @@ describe('Hermes jobs controller', () => {
     vi.clearAllMocks()
     tempDir = mkdtempSync(join(tmpdir(), 'hermes-web-ui-jobs-test-'))
     testState.profileDir = tempDir
+    testState.profileDirs = {}
+    testState.listUserProfiles.mockReturnValue([])
     testState.execFile.mockImplementation((_bin, _args, _opts, cb) => {
       cb(null, { stdout: '', stderr: '' })
     })
@@ -63,6 +75,7 @@ describe('Hermes jobs controller', () => {
     if (tempDir) rmSync(tempDir, { recursive: true, force: true })
     tempDir = ''
     testState.profileDir = ''
+    testState.profileDirs = {}
   })
 
   it('returns 404 before editing when the local cron job does not exist', async () => {
@@ -123,5 +136,34 @@ describe('Hermes jobs controller', () => {
       }),
       expect.any(Function),
     )
+    expect(ctx.body.job.profile).toBe('default')
+  })
+
+  it('aggregates regular-user job lists across authorized profiles and marks profile scope', async () => {
+    const defaultDir = join(tempDir, 'default')
+    const travelDir = join(tempDir, 'travel')
+    mkdirSync(join(defaultDir, 'cron'), { recursive: true })
+    mkdirSync(join(travelDir, 'cron'), { recursive: true })
+    testState.profileDirs = { default: defaultDir, travel: travelDir }
+    testState.listUserProfiles.mockReturnValue([{ profile_name: 'default' }, { profile_name: 'travel' }])
+    writeFileSync(join(defaultDir, 'cron', 'jobs.json'), JSON.stringify({
+      jobs: [{ job_id: 'job-default', name: 'Default job', enabled: true }],
+    }))
+    writeFileSync(join(travelDir, 'cron', 'jobs.json'), JSON.stringify({
+      jobs: [{ job_id: 'job-travel', name: 'Travel job', enabled: true }],
+    }))
+
+    const ctx = createMockCtx({
+      req: { method: 'GET' },
+      query: {},
+      state: { user: { id: 7, role: 'user' } },
+      request: { body: {} },
+    })
+    await list(ctx)
+
+    expect(ctx.body.jobs.map((job: any) => ({ id: job.id, profile: job.profile }))).toEqual([
+      { id: 'job-default', profile: 'default' },
+      { id: 'job-travel', profile: 'travel' },
+    ])
   })
 })

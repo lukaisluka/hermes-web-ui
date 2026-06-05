@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const bridgeMock = vi.hoisted(() => ({
   clarifyRespond: vi.fn(),
 }))
+const sessionAccessMocks = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  userCanAccessProfile: vi.fn(),
+}))
 
 vi.mock('../../packages/server/src/services/hermes/agent-bridge', () => ({
   AgentBridgeClient: vi.fn(() => bridgeMock),
@@ -17,7 +21,7 @@ vi.mock('../../packages/server/src/services/logger', () => ({
 }))
 
 vi.mock('../../packages/server/src/db/hermes/session-store', () => ({
-  getSession: vi.fn(() => null),
+  getSession: sessionAccessMocks.getSession,
 }))
 
 vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
@@ -29,10 +33,12 @@ vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
 vi.mock('../../packages/server/src/middleware/user-auth', () => ({
   authenticateUserToken: vi.fn(),
   isAuthEnabled: vi.fn(async () => false),
+  isRegularUser: (user: any) => user?.role === 'user',
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
 }))
 
 vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
-  userCanAccessProfile: vi.fn(() => true),
+  userCanAccessProfile: sessionAccessMocks.userCanAccessProfile,
 }))
 
 function createSocketHarness() {
@@ -65,6 +71,10 @@ describe('ChatRunSocket clarify responses', () => {
   beforeEach(() => {
     vi.resetModules()
     bridgeMock.clarifyRespond.mockReset()
+    sessionAccessMocks.getSession.mockReset()
+    sessionAccessMocks.getSession.mockReturnValue(null)
+    sessionAccessMocks.userCanAccessProfile.mockReset()
+    sessionAccessMocks.userCanAccessProfile.mockReturnValue(true)
   })
 
   it('forwards clarify.respond events to the bridge and emits clarify.resolved', async () => {
@@ -158,5 +168,28 @@ describe('ChatRunSocket clarify responses', () => {
       resolved: false,
       error: 'unknown clarify request',
     })
+  })
+
+  it('rejects regular-user realtime actions after the session profile is revoked', async () => {
+    sessionAccessMocks.getSession.mockReturnValue({
+      id: 'session-1',
+      profile: 'research',
+      user_id: '7',
+    })
+    sessionAccessMocks.userCanAccessProfile.mockReturnValue(false)
+    const { ChatRunSocket } = await import('../../packages/server/src/services/hermes/run-chat')
+    const { handlers, io, socket } = createSocketHarness()
+    socket.data.user = { id: 7, username: 'han', role: 'user', profiles: ['research'] }
+    const server = new ChatRunSocket(io as any)
+
+    ;(server as any).onConnection(socket)
+    await handlers.get('clarify.respond')?.({
+      session_id: 'session-1',
+      clarify_id: 'clarify-1',
+      response: 'Use option A',
+    })
+
+    expect(sessionAccessMocks.userCanAccessProfile).toHaveBeenCalledWith(7, 'research')
+    expect(bridgeMock.clarifyRespond).not.toHaveBeenCalled()
   })
 })

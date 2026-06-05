@@ -13,14 +13,16 @@ const jobsStore = useJobsStore()
 const profilesStore = useProfilesStore()
 const showModal = ref(false)
 const editingJob = ref<string | null>(null)
+const editingJobProfile = ref<string | null>(null)
 const selectedJobId = ref<string | null>(null)
+const selectedJobProfile = ref<string | null>(null)
 const activeProfileName = computed(() => profilesStore.activeProfileName || 'default')
 
 const jobNameMap = computed(() => {
   const map: Record<string, string> = {}
   for (const job of jobsStore.jobs) {
     const id = job.job_id || job.id
-    map[id] = job.name
+    map[`${job.profile || activeProfileName.value}::${id}`] = job.name
   }
   return map
 })
@@ -33,6 +35,7 @@ async function ensureProfileSelection() {
 
 async function reloadJobsForProfile() {
   selectedJobId.value = null
+  selectedJobProfile.value = null
   jobsStore.jobs = []
   await ensureProfileSelection()
   await jobsStore.fetchJobs()
@@ -47,14 +50,16 @@ function openCreateModal() {
   showModal.value = true
 }
 
-function openEditModal(jobId: string) {
+function openEditModal(jobId: string, profile?: string) {
   editingJob.value = jobId
+  editingJobProfile.value = profile || null
   showModal.value = true
 }
 
 function handleModalClose() {
   showModal.value = false
   editingJob.value = null
+  editingJobProfile.value = null
 }
 
 async function handleSave() {
@@ -62,8 +67,9 @@ async function handleSave() {
   handleModalClose()
 }
 
-function handleSelectJob(jobId: string | null) {
-  selectedJobId.value = selectedJobId.value === jobId ? null : jobId
+function handleSelectJob(jobId: string | null, profile?: string) {
+  selectedJobId.value = jobId
+  selectedJobProfile.value = jobId ? profile || null : null
 }
 </script>
 
@@ -84,6 +90,7 @@ function handleSelectJob(jobId: string | null) {
         <NSpin :show="jobsStore.loading && jobsStore.jobs.length === 0">
           <JobsPanel
             :selected-job-id="selectedJobId"
+            :selected-job-profile="selectedJobProfile"
             @edit="openEditModal"
             @select="handleSelectJob"
           />
@@ -96,7 +103,7 @@ function handleSelectJob(jobId: string | null) {
         <JobRunHistory
           :selected-job-id="selectedJobId"
           :job-name-map="jobNameMap"
-          :profile-key="activeProfileName"
+          :profile-key="selectedJobProfile || activeProfileName"
         />
       </div>
     </div>
@@ -104,6 +111,7 @@ function handleSelectJob(jobId: string | null) {
     <JobFormModal
       v-if="showModal"
       :job-id="editingJob"
+      :job-profile="editingJobProfile"
       @close="handleModalClose"
       @saved="handleSave"
     />

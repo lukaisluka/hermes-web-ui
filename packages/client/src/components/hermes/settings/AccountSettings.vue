@@ -6,12 +6,14 @@ import { changePassword, changeUsername, fetchCurrentUser, fetchLockedIps, unloc
 import type { LockedIp, UserAvatar } from "@/api/auth";
 import ProfileAvatar from "@/components/hermes/profiles/ProfileAvatar.vue";
 import multiavatar from "@multiavatar/multiavatar";
+import { isStoredProfileAdmin } from "@/api/client";
 
 const { t } = useI18n();
 const message = useMessage();
 
 const username = ref<string | null>(null);
 const loading = ref(false);
+const canManageLockedIps = isStoredProfileAdmin();
 
 // User avatar
 const avatar = ref<UserAvatar | null>(null);
@@ -232,7 +234,9 @@ function formatTime(ts: number): string {
   return remaining > 0 ? `${remaining} min` : t("common.expired");
 }
 
-onMounted(() => { loadLockedIps(); });
+onMounted(() => {
+  if (canManageLockedIps) loadLockedIps();
+});
 </script>
 
 <template>
@@ -279,7 +283,7 @@ onMounted(() => { loadLockedIps(); });
     </div>
 
     <!-- Locked IPs management -->
-    <div class="locked-ips-section">
+    <div v-if="canManageLockedIps" class="locked-ips-section">
       <h3 class="section-title">{{ t("settings.lockedIps.title") }}</h3>
       <div class="action-row" style="margin-bottom: 12px;">
         <span class="action-label">{{ t("settings.lockedIps.count", { count: lockedIps.length }) }}</span>

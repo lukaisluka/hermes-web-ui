@@ -5,6 +5,7 @@ import {
   isSensitivePath,
   MAX_EDIT_SIZE,
 } from '../../services/hermes/file-provider'
+import { isRegularUser } from '../../middleware/user-auth'
 
 function requestedProfile(ctx: any): string | undefined {
   return ctx.state?.profile?.name
@@ -16,6 +17,15 @@ function resolveRequestPath(ctx: any, relativePath: string): string {
 
 async function createRequestFileProvider(ctx: any) {
   return createFileProvider(requestedProfile(ctx))
+}
+
+function isConfigPath(relativePath: string): boolean {
+  const fileName = relativePath.replace(/\\/g, '/').split('/').pop()?.toLowerCase() || ''
+  return fileName === 'config.yaml' || fileName.startsWith('config.yaml.')
+}
+
+function isForbiddenPath(ctx: any, relativePath: string): boolean {
+  return isSensitivePath(relativePath) || (isRegularUser(ctx.state?.user) && isConfigPath(relativePath))
 }
 
 function withAbsolutePath<T extends { path: string }>(ctx: any, entry: T): T & { absolutePath: string } {
@@ -47,10 +57,15 @@ function handleError(ctx: any, err: any) {
 // GET /api/hermes/files/list?path=
 fileRoutes.get('/api/hermes/files/list', async (ctx) => {
   const relativePath = (ctx.query.path as string) || ''
+  if (relativePath && isForbiddenPath(ctx, relativePath)) {
+    ctx.status = 403
+    ctx.body = { error: 'Cannot list sensitive path', code: 'permission_denied' }
+    return
+  }
   try {
     const absPath = resolveRequestPath(ctx, relativePath)
     const provider = await createRequestFileProvider(ctx)
-    const entries = await provider.listDir(absPath)
+    const entries = (await provider.listDir(absPath)).filter(entry => !isForbiddenPath(ctx, entry.path))
     entries.sort((a, b) => {
       if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
       return a.name.localeCompare(b.name)
@@ -69,6 +84,11 @@ fileRoutes.get('/api/hermes/files/stat', async (ctx) => {
     ctx.body = { error: 'Missing path parameter', code: 'missing_path' }
     return
   }
+  if (isForbiddenPath(ctx, relativePath)) {
+    ctx.status = 403
+    ctx.body = { error: 'Cannot inspect sensitive file', code: 'permission_denied' }
+    return
+  }
   try {
     const absPath = resolveRequestPath(ctx, relativePath)
     const provider = await createRequestFileProvider(ctx)
@@ -85,6 +105,11 @@ fileRoutes.get('/api/hermes/files/read', async (ctx) => {
   if (!relativePath) {
     ctx.status = 400
     ctx.body = { error: 'Missing path parameter', code: 'missing_path' }
+    return
+  }
+  if (isForbiddenPath(ctx, relativePath)) {
+    ctx.status = 403
+    ctx.body = { error: 'Cannot read sensitive file', code: 'permission_denied' }
     return
   }
   try {
@@ -110,7 +135,7 @@ fileRoutes.put('/api/hermes/files/write', async (ctx) => {
     ctx.body = { error: 'Missing path parameter', code: 'missing_path' }
     return
   }
-  if (isSensitivePath(relativePath)) {
+  if (isForbiddenPath(ctx, relativePath)) {
     ctx.status = 403
     ctx.body = { error: 'Cannot modify sensitive file', code: 'permission_denied' }
     return
@@ -139,7 +164,7 @@ fileRoutes.delete('/api/hermes/files/delete', async (ctx) => {
     ctx.body = { error: 'Missing path parameter', code: 'missing_path' }
     return
   }
-  if (isSensitivePath(relativePath)) {
+  if (isForbiddenPath(ctx, relativePath)) {
     ctx.status = 403
     ctx.body = { error: 'Cannot delete sensitive file', code: 'permission_denied' }
     return
@@ -166,7 +191,7 @@ fileRoutes.post('/api/hermes/files/rename', async (ctx) => {
     ctx.body = { error: 'Missing oldPath or newPath', code: 'missing_path' }
     return
   }
-  if (isSensitivePath(oldPath)) {
+  if (isForbiddenPath(ctx, oldPath) || isForbiddenPath(ctx, newPath)) {
     ctx.status = 403
     ctx.body = { error: 'Cannot rename sensitive file', code: 'permission_denied' }
     return
@@ -190,6 +215,11 @@ fileRoutes.post('/api/hermes/files/mkdir', async (ctx) => {
     ctx.body = { error: 'Missing path parameter', code: 'missing_path' }
     return
   }
+  if (isForbiddenPath(ctx, relativePath)) {
+    ctx.status = 403
+    ctx.body = { error: 'Cannot create sensitive path', code: 'permission_denied' }
+    return
+  }
   try {
     const absPath = resolveRequestPath(ctx, relativePath)
     const provider = await createRequestFileProvider(ctx)
@@ -206,6 +236,11 @@ fileRoutes.post('/api/hermes/files/copy', async (ctx) => {
   if (!srcPath || !destPath) {
     ctx.status = 400
     ctx.body = { error: 'Missing srcPath or destPath', code: 'missing_path' }
+    return
+  }
+  if (isForbiddenPath(ctx, srcPath) || isForbiddenPath(ctx, destPath)) {
+    ctx.status = 403
+    ctx.body = { error: 'Cannot copy sensitive file', code: 'permission_denied' }
     return
   }
   try {
@@ -269,7 +304,7 @@ fileRoutes.post('/api/hermes/files/upload', async (ctx) => {
     }
 
     const filePath = targetDir ? `${targetDir}/${filename}` : filename
-    if (isSensitivePath(filePath)) {
+    if (isForbiddenPath(ctx, filePath)) {
       ctx.status = 403
       ctx.body = { error: `Cannot overwrite sensitive file: ${filename}`, code: 'permission_denied' }
       return

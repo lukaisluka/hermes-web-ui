@@ -17,6 +17,7 @@ import { getActiveProfileName } from '../../services/hermes/hermes-profile'
 import { HermesSkillInjector } from '../../services/hermes/skill-injector'
 import type { HermesProfile } from '../../services/hermes/hermes-cli'
 import { listUserProfiles } from '../../db/hermes/users-store'
+import { isSuperAdmin } from '../../middleware/user-auth'
 
 const bridgeCleanupClient = () => new AgentBridgeClient({ connectRetryMs: 0, timeoutMs: 5000 })
 
@@ -145,14 +146,14 @@ function requestedProfileName(ctx: any): string {
 
 function filterProfilesForUser(ctx: any, profiles: HermesProfile[]): HermesProfile[] {
   const user = ctx.state?.user
-  if (!user || user.role === 'super_admin') return profiles
+  if (!user || isSuperAdmin(user)) return profiles
   const allowed = new Set(listUserProfiles(user.id).map(profile => profile.profile_name))
   return profiles.filter(profile => allowed.has(profile.name))
 }
 
 function canAccessProfile(ctx: any, profileName: string): boolean {
   const user = ctx.state?.user
-  if (!user || user.role === 'super_admin') return true
+  if (!user || isSuperAdmin(user)) return true
   return listUserProfiles(user.id).some(profile => profile.profile_name === profileName)
 }
 

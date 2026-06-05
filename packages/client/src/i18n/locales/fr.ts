@@ -67,6 +67,7 @@ export default {
     roles: {
       superAdmin: 'Super admin',
       admin: 'Admin',
+      user: 'Utilisateur standard',
     },
     status: {
       active: 'Actif',

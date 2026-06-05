@@ -30,6 +30,10 @@ const handlers = {
 
 vi.mock('../../packages/server/src/controllers/hermes/kanban', () => handlers)
 
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  requireProfileAdmin: vi.fn(async (_ctx: any, next: any) => { await next() }),
+}))
+
 describe('kanban routes', () => {
   beforeEach(() => {
     vi.resetModules()

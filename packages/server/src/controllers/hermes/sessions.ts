@@ -23,6 +23,7 @@ import { logger } from '../../services/logger'
 import type { ConversationSummary } from '../../services/hermes/conversations'
 import { listUserProfiles } from '../../db/hermes/users-store'
 import { readConfigYamlForProfile } from '../../services/config-helpers'
+import { isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
 
 function getPendingDeletedSessionIds(): Set<string> {
   return getGroupChatServer()?.getStorage().getPendingDeletedSessionIds() || new Set<string>()
@@ -50,7 +51,7 @@ function explicitProfileFilter(ctx: any): string | undefined {
 
 function allowedProfileSet(ctx: any): Set<string> | null {
   const user = ctx.state?.user
-  if (!user || user.role === 'super_admin') return null
+  if (!user || isSuperAdmin(user)) return null
   return new Set(listUserProfiles(user.id).map(profile => profile.profile_name))
 }
 
@@ -65,10 +66,59 @@ function filterByAllowedProfiles<T>(ctx: any, items: T[]): T[] {
   return items.filter(item => allowed.has(((item as any).profile as string | null | undefined) || 'default'))
 }
 
+function currentUserId(ctx: any): string {
+  const id = ctx.state?.user?.id
+  return id == null ? '' : String(id)
+}
+
+function canAccessSessionOwner(ctx: any, session: any | null | undefined): boolean {
+  if (!isRegularUser(ctx.state?.user)) return true
+  return !!session && String(session.user_id || '') === currentUserId(ctx)
+}
+
+function filterBySessionAccess<T>(ctx: any, items: T[]): T[] {
+  return filterByAllowedProfiles(ctx, items).filter(item => canAccessSessionOwner(ctx, item))
+}
+
 function denySessionAccess(ctx: any, session: any | null | undefined): boolean {
-  if (!session || canAccessProfile(ctx, session.profile)) return false
+  if (!session) return false
+  if (!canAccessProfile(ctx, session.profile)) {
+    ctx.status = 403
+    ctx.body = { error: `Profile "${session.profile || 'default'}" is not available for this user` }
+    return true
+  }
+  if (!canAccessSessionOwner(ctx, session)) {
+    ctx.status = 403
+    ctx.body = { error: 'Session is not available for this user' }
+    return true
+  }
+  return false
+}
+
+function denyRegularUserMissingLocalSession(ctx: any, session: any | null | undefined): boolean {
+  if (!isRegularUser(ctx.state?.user) || session) return false
+  ctx.status = 404
+  ctx.body = { error: 'Session not found' }
+  return true
+}
+
+function ownerIdForNewSession(ctx: any): string | null {
+  return isRegularUser(ctx.state?.user) ? currentUserId(ctx) || null : null
+}
+
+function sessionAccessError(ctx: any, session: any | null | undefined): string | null {
+  if (!session) return isRegularUser(ctx.state?.user) ? 'Session not found' : null
+  if (!canAccessProfile(ctx, session.profile)) {
+    return `Profile "${session.profile || 'default'}" is not available for this user`
+  }
+  if (!canAccessSessionOwner(ctx, session)) return 'Session is not available for this user'
+  return null
+}
+
+function denyHermesHistoryForRegularUser(ctx: any): boolean {
+  if (!isRegularUser(ctx.state?.user)) return false
   ctx.status = 403
-  ctx.body = { error: `Profile "${session.profile || 'default'}" is not available for this user` }
+  ctx.body = { error: 'Hermes history import is not available for regular users' }
   return true
 }
 
@@ -89,6 +139,19 @@ interface ProfileDefaultModel {
   provider: string
 }
 
+interface HermesUsageAggregate {
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+  reasoning_tokens: number
+  sessions: number
+  by_model: UsageStatsModelRow[]
+  by_day: UsageStatsDailyRow[]
+  cost: number
+  total_api_calls: number
+}
+
 interface LocalImportMessage {
   session_id: string
   role: string
@@ -102,6 +165,77 @@ interface LocalImportMessage {
   reasoning?: string | null
   reasoning_details?: string | null
   reasoning_content?: string | null
+}
+
+function emptyUsageAggregate(): HermesUsageAggregate {
+  return {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_read_tokens: 0,
+    cache_write_tokens: 0,
+    reasoning_tokens: 0,
+    sessions: 0,
+    by_model: [],
+    by_day: [],
+    cost: 0,
+    total_api_calls: 0,
+  }
+}
+
+function mergeUsageAggregate(target: HermesUsageAggregate, source: HermesUsageAggregate): HermesUsageAggregate {
+  target.input_tokens += source.input_tokens
+  target.output_tokens += source.output_tokens
+  target.cache_read_tokens += source.cache_read_tokens
+  target.cache_write_tokens += source.cache_write_tokens
+  target.reasoning_tokens += source.reasoning_tokens
+  target.sessions += source.sessions
+  target.cost += source.cost
+  target.total_api_calls += source.total_api_calls
+
+  const byModel = new Map(target.by_model.map(row => [row.model, { ...row }]))
+  for (const row of source.by_model) {
+    const existing = byModel.get(row.model) || {
+      model: row.model,
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      reasoning_tokens: 0,
+      sessions: 0,
+    }
+    existing.input_tokens += row.input_tokens
+    existing.output_tokens += row.output_tokens
+    existing.cache_read_tokens += row.cache_read_tokens
+    existing.cache_write_tokens += row.cache_write_tokens
+    existing.reasoning_tokens += row.reasoning_tokens
+    existing.sessions += row.sessions
+    byModel.set(row.model, existing)
+  }
+  target.by_model = [...byModel.values()]
+
+  const byDay = new Map(target.by_day.map(row => [row.date, { ...row }]))
+  for (const row of source.by_day) {
+    const existing = byDay.get(row.date) || {
+      date: row.date,
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      sessions: 0,
+      errors: 0,
+      cost: 0,
+    }
+    existing.input_tokens += row.input_tokens
+    existing.output_tokens += row.output_tokens
+    existing.cache_read_tokens += row.cache_read_tokens
+    existing.cache_write_tokens += row.cache_write_tokens
+    existing.sessions += row.sessions
+    existing.errors += row.errors
+    existing.cost += row.cost
+    byDay.set(row.date, existing)
+  }
+  target.by_day = [...byDay.values()]
+  return target
 }
 
 function hasProfileOnDisk(profile: string): boolean {
@@ -249,7 +383,7 @@ export async function listConversations(ctx: any) {
 
   const profile = explicitProfileFilter(ctx)
   const sessions = localListSessions(profile, source, limit && limit > 0 ? limit : 200)
-  const summaries: ConversationSummary[] = sessions.map(s => ({
+  const summaries: ConversationSummary[] = filterBySessionAccess(ctx, sessions).map(s => ({
     id: s.id,
     profile: s.profile || null,
     source: s.source,
@@ -275,7 +409,7 @@ export async function listConversations(ctx: any) {
     is_active: s.ended_at == null && (Date.now() / 1000 - s.last_active) <= 300,
     thread_session_count: 1,
   }))
-  ctx.body = { sessions: filterPendingDeletedConversationSummaries(filterByAllowedProfiles(ctx, summaries)) }
+  ctx.body = { sessions: filterPendingDeletedConversationSummaries(summaries) }
 }
 
 export async function getConversationMessages(ctx: any) {
@@ -318,7 +452,7 @@ export async function list(ctx: any) {
   const allSessions = localListSessions(profile, source, effectiveLimit)
   const knownProfiles = profile ? null : new Set(listProfileNamesFromDisk())
   ctx.body = {
-    sessions: filterPendingDeletedSessions(filterByAllowedProfiles(ctx, allSessions).filter(s =>
+    sessions: filterPendingDeletedSessions(filterBySessionAccess(ctx, allSessions).filter(s =>
       (s.source === 'api_server' || s.source === 'cli') &&
       (!knownProfiles || knownProfiles.has(s.profile || 'default')),
     )),
@@ -330,6 +464,7 @@ export async function list(ctx: any) {
  * GET /api/hermes/sessions/hermes?source=&limit=
  */
 export async function listHermesSessions(ctx: any) {
+  if (denyHermesHistoryForRegularUser(ctx)) return
   const source = (ctx.query.source as string) || undefined
   const limit = ctx.query.limit ? parseInt(ctx.query.limit as string, 10) : undefined
   const profile = requestedProfile(ctx)
@@ -341,7 +476,7 @@ export async function listHermesSessions(ctx: any) {
       ...(profile ? { ...session, profile } : session),
       webui_imported: importedIds.has(session.id),
     }))
-  ctx.body = { sessions: filterPendingDeletedSessions(filterByAllowedProfiles(ctx, allSessions).filter(s => s.source !== 'api_server')) }
+  ctx.body = { sessions: filterPendingDeletedSessions(filterBySessionAccess(ctx, allSessions).filter(s => s.source !== 'api_server')) }
 }
 
 export async function search(ctx: any) {
@@ -351,7 +486,7 @@ export async function search(ctx: any) {
   const results = localSearchSessions(profile, q, limit && limit > 0 ? limit : 20)
   const knownProfiles = profile ? null : new Set(listProfileNamesFromDisk())
   ctx.body = {
-    results: filterPendingDeletedSessions(filterByAllowedProfiles(ctx, results).filter(s =>
+    results: filterPendingDeletedSessions(filterBySessionAccess(ctx, results).filter(s =>
       !knownProfiles || knownProfiles.has(s.profile || 'default'),
     )),
   }
@@ -373,6 +508,7 @@ export async function get(ctx: any) {
  * GET /api/hermes/sessions/hermes/:id
  */
 export async function getHermesSession(ctx: any) {
+  if (denyHermesHistoryForRegularUser(ctx)) return
   const profile = requestedProfile(ctx)
 
   // Prefer the Web UI local session store. Hermes state.db can lag behind or
@@ -419,6 +555,7 @@ export async function getHermesSession(ctx: any) {
 }
 
 export async function importHermesSession(ctx: any) {
+  if (denyHermesHistoryForRegularUser(ctx)) return
   const sessionId = ctx.params.id
   const profile = requestedProfile(ctx) || getActiveProfileName()
   if (!canAccessProfile(ctx, profile)) {
@@ -509,8 +646,11 @@ export async function importHermesSession(ctx: any) {
 export async function remove(ctx: any) {
   const sessionId = ctx.params.id
   const existing = localGetSession(sessionId)
+  if (denyRegularUserMissingLocalSession(ctx, existing)) return
   if (denySessionAccess(ctx, existing)) return
-  const hermesProfile = requestedProfile(ctx) || existing?.profile || getActiveProfileName()
+  const hermesProfile = isRegularUser(ctx.state?.user)
+    ? existing?.profile || requestedProfile(ctx) || getActiveProfileName()
+    : requestedProfile(ctx) || existing?.profile || getActiveProfileName()
   const hermes = await deleteHermesSessionIfPresent(sessionId, hermesProfile)
   const localDeleted = existing ? localDeleteSession(sessionId) : true
   if (!localDeleted) {
@@ -565,6 +705,12 @@ export async function batchRemove(ctx: any) {
   for (const target of targets) {
     const { id } = target
     const existing = localGetSession(id)
+    const accessError = sessionAccessError(ctx, existing)
+    if (accessError) {
+      results.failed++
+      results.errors.push({ id, error: accessError })
+      continue
+    }
     const targetProfile = target.profile || existing?.profile
     if (targetProfile && !canAccessProfile(ctx, targetProfile)) {
       results.failed++
@@ -612,12 +758,16 @@ export async function usageBatch(ctx: any) {
     ctx.body = {}
     return
   }
-  const idList = ids.split(',').filter(Boolean)
+  const idList = ids.split(',').filter(Boolean).filter(id => {
+    const session = localGetSession(id)
+    return session ? !sessionAccessError(ctx, session) : !isRegularUser(ctx.state?.user)
+  })
   ctx.body = getUsageBatch(idList)
 }
 
 export async function usageSingle(ctx: any) {
   const session = localGetSession(ctx.params.id)
+  if (denyRegularUserMissingLocalSession(ctx, session)) return
   if (denySessionAccess(ctx, session)) return
   const result = getUsage(ctx.params.id)
   if (!result) {
@@ -635,6 +785,7 @@ export async function rename(ctx: any) {
     return
   }
   const existing = localGetSession(ctx.params.id)
+  if (denyRegularUserMissingLocalSession(ctx, existing)) return
   if (denySessionAccess(ctx, existing)) return
   const ok = localRenameSession(ctx.params.id, title.trim())
   if (!ok) {
@@ -656,8 +807,14 @@ export async function setWorkspace(ctx: any) {
   const id = ctx.params.id
   const existing = getSession(id)
   if (denySessionAccess(ctx, existing)) return
+  const profile = requestedProfile(ctx) || 'default'
+  if (!existing && !canAccessProfile(ctx, profile)) {
+    ctx.status = 403
+    ctx.body = { error: `Profile "${profile}" is not available for this user` }
+    return
+  }
   if (!existing) {
-    createSession({ id, profile: requestedProfile(ctx) || 'default', title: '' })
+    createSession({ id, profile, source: 'cli', title: '', user_id: ownerIdForNewSession(ctx) })
   }
   updateSession(id, { workspace: workspace || null } as any)
   ctx.body = { ok: true }
@@ -679,8 +836,14 @@ export async function setModel(ctx: any) {
   const id = ctx.params.id
   const existing = getSession(id)
   if (denySessionAccess(ctx, existing)) return
+  const profile = requestedProfile(ctx) || 'default'
+  if (!existing && !canAccessProfile(ctx, profile)) {
+    ctx.status = 403
+    ctx.body = { error: `Profile "${profile}" is not available for this user` }
+    return
+  }
   if (!existing) {
-    createSession({ id, profile: requestedProfile(ctx) || 'default', title: '' })
+    createSession({ id, profile, source: 'cli', title: '', user_id: ownerIdForNewSession(ctx) })
   }
   updateSession(id, { model: model.trim(), provider: (provider || '').trim() } as any)
   ctx.body = { ok: true }
@@ -696,23 +859,31 @@ export async function contextLength(ctx: any) {
 export async function usageStats(ctx: any) {
   const rawDays = parseInt(String(ctx.query?.days ?? '30'), 10)
   const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 30
-  const profile = requestedProfile(ctx)
+  const explicitProfile = explicitProfileFilter(ctx)
+  const profile = isRegularUser(ctx.state?.user) ? explicitProfile : requestedProfile(ctx)
 
-  let hermes = {
-    input_tokens: 0,
-    output_tokens: 0,
-    cache_read_tokens: 0,
-    cache_write_tokens: 0,
-    reasoning_tokens: 0,
-    sessions: 0,
-    by_model: [] as UsageStatsModelRow[],
-    by_day: [] as UsageStatsDailyRow[],
-    cost: 0,
-    total_api_calls: 0,
-  }
+  let hermes = emptyUsageAggregate()
 
   try {
-    hermes = profile ? await getUsageStatsFromDb(days, undefined, profile) : await getUsageStatsFromDb(days)
+    if (isRegularUser(ctx.state?.user) && profile && !canAccessProfile(ctx, profile)) {
+      ctx.status = 403
+      ctx.body = { error: `Profile "${profile || 'default'}" is not available for this user` }
+      return
+    }
+    if (profile) {
+      hermes = await getUsageStatsFromDb(days, undefined, profile)
+    } else if (isRegularUser(ctx.state?.user)) {
+      const profiles = [...(allowedProfileSet(ctx) || new Set<string>())]
+      for (const allowedProfile of profiles) {
+        try {
+          mergeUsageAggregate(hermes, await getUsageStatsFromDb(days, undefined, allowedProfile))
+        } catch (err) {
+          logger.warn({ err, profile: allowedProfile }, 'usageStats: failed to load authorized profile usage analytics')
+        }
+      }
+    } else {
+      hermes = await getUsageStatsFromDb(days)
+    }
   } catch (err) {
     logger.warn(err, 'usageStats: failed to load Hermes usage analytics from state.db')
   }
@@ -876,7 +1047,7 @@ export async function getConversationMessagesPaginated(ctx: any) {
 
   const { getSessionDetailPaginated } = await import('../../db/hermes/session-store')
   const localResult = getSessionDetailPaginated(ctx.params.id, offset, limit)
-  const result = localResult && (!profile || localResult.session.profile === profile)
+  const result = localResult && (isRegularUser(ctx.state?.user) || !profile || localResult.session.profile === profile)
     ? localResult
     : await getSessionDetailPaginatedFromDbWithProfile(ctx.params.id, profile || 'default', offset, limit)
 

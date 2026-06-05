@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 const openSessionSearchMock = vi.hoisted(() => vi.fn())
+const replaceAppRouteMock = vi.hoisted(() => vi.fn())
 const mockAppStore = vi.hoisted(() => ({
   sidebarOpen: true,
   sidebarCollapsed: false,
@@ -28,6 +29,14 @@ vi.mock('@/composables/useSessionSearch', () => ({
 vi.mock('@/stores/hermes/app', () => ({
   useAppStore: () => mockAppStore,
 }))
+
+vi.mock('@/api/client', async (importOriginal) => {
+  const actual = await importOriginal<any>()
+  return {
+    ...actual,
+    replaceAppRoute: replaceAppRouteMock,
+  }
+})
 
 vi.mock('vue-router', async (importOriginal) => {
   const actual = await importOriginal<any>()
@@ -100,6 +109,7 @@ import AppSidebar from '@/components/layout/AppSidebar.vue'
 
 describe('AppSidebar search entry', () => {
   beforeEach(() => {
+    localStorage.clear()
     openSessionSearchMock.mockClear()
     mockAppStore.serverVersion = 'test'
     mockAppStore.latestVersion = ''
@@ -108,7 +118,13 @@ describe('AppSidebar search entry', () => {
     mockAppStore.updating = false
     mockAppStore.sidebarCollapsed = false
     mockAppStore.reloadClient.mockClear()
+    replaceAppRouteMock.mockClear()
   })
+
+  function setRole(role: string) {
+    const payload = btoa(JSON.stringify({ role }))
+    localStorage.setItem('hermes_api_key', `header.${payload}.signature`)
+  }
 
   it('opens the session search modal from the sidebar button', async () => {
     const wrapper = mount(AppSidebar, {
@@ -181,5 +197,69 @@ describe('AppSidebar search entry', () => {
 
     await agentGroup.find('.nav-group-label').trigger('click')
     expect(agentGroup.find('.nav-group-items').attributes('style')).toContain('display: none')
+  })
+
+  it('shows only collaboration navigation to regular users', () => {
+    setRole('user')
+    const wrapper = mount(AppSidebar, {
+      global: {
+        stubs: {
+          ProfileSelector: true,
+          ModelSelector: true,
+          LanguageSwitch: true,
+          ThemeSwitch: true,
+          NButton: true,
+        },
+      },
+    })
+
+    const itemLabels = wrapper.findAll('.nav-item').map(node => node.text())
+    for (const allowed of [
+      'sidebar.chat',
+      'sidebar.groupChat',
+      'sidebar.jobs',
+      'sidebar.kanban',
+      'sidebar.files',
+      'sidebar.usage',
+      'sidebar.skillsUsage',
+      'sidebar.settings',
+    ]) {
+      expect(itemLabels.some(label => label.startsWith(allowed))).toBe(true)
+    }
+    for (const forbidden of [
+      'sidebar.channels',
+      'sidebar.skills',
+      'sidebar.plugins',
+      'sidebar.mcp',
+      'sidebar.memory',
+      'sidebar.models',
+      'sidebar.logs',
+      'sidebar.performance',
+      'sidebar.codingAgents',
+      'sidebar.versionPreview',
+      'sidebar.apiRelay',
+    ]) {
+      expect(itemLabels).not.toContain(forbidden)
+    }
+  })
+
+  it('fully reloads the app when logging out to clear account-scoped state', async () => {
+    localStorage.setItem('hermes_api_key', 'test-token')
+    const wrapper = mount(AppSidebar, {
+      global: {
+        stubs: {
+          ProfileSelector: true,
+          ModelSelector: true,
+          LanguageSwitch: true,
+          ThemeSwitch: true,
+          NButton: true,
+        },
+      },
+    })
+
+    await wrapper.find('.logout-item').trigger('click')
+
+    expect(localStorage.getItem('hermes_api_key')).toBeNull()
+    expect(replaceAppRouteMock).toHaveBeenCalledWith('/')
   })
 })

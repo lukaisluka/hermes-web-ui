@@ -8,8 +8,8 @@ import { ContextEngine } from '../context-engine/compressor'
 import { SessionDeleter } from '../session-deleter'
 import { countTokens, SUMMARY_PREFIX } from '../../../lib/context-compressor'
 import { AgentBridgeClient } from '../agent-bridge'
-import { authenticateUserToken, isAuthEnabled } from '../../../middleware/user-auth'
-import { findUserByUsername, getUserAvatar } from '../../../db/hermes/users-store'
+import { authenticateUserToken, isAuthEnabled, isRegularUser, type AuthenticatedUser } from '../../../middleware/user-auth'
+import { findUserByUsername, getUserAvatar, userCanAccessProfile } from '../../../db/hermes/users-store'
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -76,6 +76,7 @@ interface RoomAgent {
 interface RoomInfo {
     id: string
     name: string
+    profile: string | null
     inviteCode: string | null
     triggerTokens: number
     maxHistoryTokens: number
@@ -299,15 +300,15 @@ class ChatStorage {
     // ─── Rooms ────────────────────────────────────────────────
 
     getRoom(roomId: string): RoomInfo | undefined {
-        return this.db()?.prepare('SELECT id, name, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE id = ?').get(roomId) as any
+        return this.db()?.prepare('SELECT id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE id = ?').get(roomId) as any
     }
 
     getRoomByInviteCode(code: string): RoomInfo | undefined {
-        return this.db()?.prepare('SELECT id, name, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE inviteCode = ?').get(code) as any
+        return this.db()?.prepare('SELECT id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE inviteCode = ?').get(code) as any
     }
 
     getAllRooms(): RoomInfo[] {
-        return (this.db()?.prepare('SELECT id, name, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms ORDER BY id').all() || []) as any[]
+        return (this.db()?.prepare('SELECT id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms ORDER BY id').all() || []) as any[]
     }
 
     getRoomsForProfiles(profiles: string[]): RoomInfo[] {
@@ -315,18 +316,18 @@ class ChatStorage {
         if (!uniqueProfiles.length) return []
         const placeholders = uniqueProfiles.map(() => '?').join(', ')
         return (this.db()?.prepare(
-            `SELECT DISTINCT r.id, r.name, r.inviteCode, r.triggerTokens, r.maxHistoryTokens, r.tailMessageCount, r.totalTokens, r.sessionSeed
+            `SELECT DISTINCT r.id, r.name, r.profile, r.inviteCode, r.triggerTokens, r.maxHistoryTokens, r.tailMessageCount, r.totalTokens, r.sessionSeed
              FROM gc_rooms r
-             INNER JOIN gc_room_agents a ON a.roomId = r.id
-             WHERE a.profile IN (${placeholders})
+             LEFT JOIN gc_room_agents a ON a.roomId = r.id
+             WHERE r.profile IN (${placeholders}) OR a.profile IN (${placeholders})
              ORDER BY r.id`
-        ).all(...uniqueProfiles) || []) as any[]
+        ).all(...uniqueProfiles, ...uniqueProfiles) || []) as any[]
     }
 
-    saveRoom(id: string, name: string, inviteCode?: string, config?: { triggerTokens?: number; maxHistoryTokens?: number; tailMessageCount?: number }): void {
+    saveRoom(id: string, name: string, inviteCode?: string, config?: { triggerTokens?: number; maxHistoryTokens?: number; tailMessageCount?: number }, profile?: string | null): void {
         this.db()?.prepare(
-            'INSERT OR IGNORE INTO gc_rooms (id, name, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount) VALUES (?, ?, ?, ?, ?, ?)'
-        ).run(id, name, inviteCode || null, config?.triggerTokens ?? 100000, config?.maxHistoryTokens ?? 32000, config?.tailMessageCount ?? 10)
+            'INSERT OR IGNORE INTO gc_rooms (id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).run(id, name, profile || null, inviteCode || null, config?.triggerTokens ?? 100000, config?.maxHistoryTokens ?? 32000, config?.tailMessageCount ?? 10)
     }
 
     updateRoomConfig(roomId: string, config: { triggerTokens?: number; maxHistoryTokens?: number; tailMessageCount?: number }): void {
@@ -738,6 +739,8 @@ export class GroupChatServer {
     private socketRequestedSourceMap = new Map<string, 'human' | 'agent'>()
     /** Map: socket.id → numeric users.id from the web UI auth (for avatar resolution) */
     private socketAuthUserIdMap = new Map<string, number>()
+    /** Map: socket.id → authenticated Web UI user */
+    private socketAuthenticatedUserMap = new Map<string, AuthenticatedUser>()
     readonly agentClients = new AgentClients()
     private _contextEngine: ContextEngine | null = null
     private _restoreScheduled = false
@@ -811,6 +814,17 @@ export class GroupChatServer {
         return Array.from(this.rooms.keys())
     }
 
+    private canSocketAccessRoom(socket: Socket, roomId: string): boolean {
+        const user = this.socketAuthenticatedUserMap?.get(socket.id) || (socket.data?.user as AuthenticatedUser | undefined)
+        if (!user || !isRegularUser(user)) return true
+        const room = this.storage.getRoom(roomId)
+        if (!room) return false
+        const agents = this.storage.getRoomAgents(roomId)
+        if (room.profile && !userCanAccessProfile(user.id, room.profile)) return false
+        if (!room.profile && agents.length === 0) return false
+        return agents.every(agent => userCanAccessProfile(user.id, agent.profile))
+    }
+
     clearRoomRuntimeState(roomId: string): void {
         const roomTyping = this.typingState.get(roomId)
         if (roomTyping) {
@@ -874,8 +888,10 @@ export class GroupChatServer {
         }
 
         const token = auth.token || socket.handshake.query.token || ''
-        if (await isAuthEnabled() && !await authenticateUserToken(String(token))) {
-            return next(new Error('Unauthorized'))
+        if (await isAuthEnabled()) {
+            const user = await authenticateUserToken(String(token))
+            if (!user) return next(new Error('Unauthorized'))
+            socket.data.user = user
         }
         next()
     }
@@ -894,6 +910,9 @@ export class GroupChatServer {
         this.userInfoMap.set(userId, { name: userName, description })
         if (typeof auth.authUserId === 'number') {
             this.socketAuthUserIdMap.set(socket.id, auth.authUserId)
+        }
+        if (socket.data.user) {
+            this.socketAuthenticatedUserMap.set(socket.id, socket.data.user as AuthenticatedUser)
         }
 
         logger.debug(`[GroupChat] Connected: ${userName} (socket=${socket.id}, user=${userId})`)
@@ -921,6 +940,10 @@ export class GroupChatServer {
         const userId = this.socketUserMap.get(socketId) || socketId
         const requestedSource = this.socketRequestedSourceMap.get(socketId) || 'human'
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) {
+            ack?.({ error: 'Room is not available for this user' })
+            return
+        }
         const roomAgent = this.storage.getRoomAgentByAgentId(roomId, userId)
         const source = requestedSource === 'agent' && roomAgent ? 'agent' : 'human'
         if (source === 'human' && roomAgent) {
@@ -1008,6 +1031,10 @@ export class GroupChatServer {
     private handleMessage(socket: Socket, data: Partial<ChatMessage> & { roomId?: string; content: string | Array<Record<string, unknown>>; id?: string; mentionDepth?: number }, ack?: (res: any) => void): void {
         const socketId = socket.id
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) {
+            ack?.({ error: 'Room is not available for this user' })
+            return
+        }
         const room = this.rooms.get(roomId)
 
         if (!room || !room.hasOnlineMember(socketId)) {
@@ -1068,6 +1095,7 @@ export class GroupChatServer {
 
     private handleMessageStreamStart(socket: Socket, data: { roomId?: string; id?: string; senderId?: string; senderName?: string; timestamp?: number }): void {
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         const room = this.rooms.get(roomId)
         if (!room || !room.hasOnlineMember(socket.id)) return
         const id = this.normalizeClientMessageId(data.id)
@@ -1088,6 +1116,7 @@ export class GroupChatServer {
 
     private handleMessageStreamDelta(socket: Socket, data: { roomId?: string; id?: string; delta?: string }): void {
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         const room = this.rooms.get(roomId)
         if (!room || !room.hasOnlineMember(socket.id)) return
         const id = this.normalizeClientMessageId(data.id)
@@ -1101,6 +1130,7 @@ export class GroupChatServer {
 
     private handleMessageReasoningDelta(socket: Socket, data: { roomId?: string; id?: string; delta?: string }): void {
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         const room = this.rooms.get(roomId)
         if (!room || !room.hasOnlineMember(socket.id)) return
         const id = this.normalizeClientMessageId(data.id)
@@ -1114,6 +1144,7 @@ export class GroupChatServer {
 
     private handleMessageStreamEnd(socket: Socket, data: { roomId?: string; id?: string }): void {
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         const room = this.rooms.get(roomId)
         if (!room || !room.hasOnlineMember(socket.id)) return
         const id = this.normalizeClientMessageId(data.id)
@@ -1123,6 +1154,7 @@ export class GroupChatServer {
 
     private handleTyping(socket: Socket, data: { roomId?: string }): void {
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         const userId = this.socketUserMap.get(socket.id) || socket.id
         const userName = this.userInfoMap.get(userId)?.name || `User-${socket.id.slice(0, 6)}`
 
@@ -1151,6 +1183,7 @@ export class GroupChatServer {
 
     private handleStopTyping(socket: Socket, data: { roomId?: string }): void {
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         const userId = this.socketUserMap.get(socket.id) || socket.id
 
         // Remove from typing state
@@ -1170,6 +1203,7 @@ export class GroupChatServer {
 
     private handleContextStatus(socket: Socket, data: { roomId?: string; agentName?: string; status?: string; totalTokens?: number }): void {
         const roomId = data.roomId || 'general'
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         const agentName = data.agentName || ''
         const status = data.status || ''
 
@@ -1209,6 +1243,10 @@ export class GroupChatServer {
             return
         }
         const room = this.rooms.get(roomId)
+        if (!this.canSocketAccessRoom(socket, roomId)) {
+            ack?.({ error: 'Room is not available for this user' })
+            return
+        }
         if (!room?.hasOnlineMember(socket.id)) {
             ack?.({ error: 'Not in room' })
             return
@@ -1226,6 +1264,7 @@ export class GroupChatServer {
     private handleApprovalRequested(socket: Socket, data: { roomId?: string; agentName?: string; approval_id?: string; command?: string; description?: string; choices?: string[]; allow_permanent?: boolean }): void {
         const roomId = data.roomId
         if (!roomId || !data.approval_id) return
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         this.nsp.to(roomId).emit('approval.requested', {
             event: 'approval.requested',
             roomId,
@@ -1241,6 +1280,7 @@ export class GroupChatServer {
     private handleApprovalResolved(socket: Socket, data: { roomId?: string; agentName?: string; approval_id?: string; choice?: string }): void {
         const roomId = data.roomId
         if (!roomId || !data.approval_id) return
+        if (!this.canSocketAccessRoom(socket, roomId)) return
         this.nsp.to(roomId).emit('approval.resolved', {
             event: 'approval.resolved',
             roomId,
@@ -1257,6 +1297,10 @@ export class GroupChatServer {
             return
         }
         const room = this.rooms.get(roomId)
+        if (!this.canSocketAccessRoom(socket, roomId)) {
+            ack?.({ error: 'Room is not available for this user' })
+            return
+        }
         if (!room?.hasOnlineMember(socket.id)) {
             ack?.({ error: 'Not in room' })
             return
@@ -1291,6 +1335,7 @@ export class GroupChatServer {
         this.socketUserMap.delete(socketId)
         this.socketRequestedSourceMap.delete(socketId)
         this.socketAuthUserIdMap.delete(socketId)
+        this.socketAuthenticatedUserMap.delete(socketId)
         // Don't delete userInfoMap — it persists across reconnects
     }
 

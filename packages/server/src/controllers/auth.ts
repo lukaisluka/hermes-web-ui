@@ -286,7 +286,7 @@ export async function removePassword(ctx: Context) {
 }
 
 function normalizeRole(value: unknown): UserRole | null {
-  return value === 'super_admin' || value === 'admin' ? value : null
+  return value === 'super_admin' || value === 'admin' || value === 'user' ? value : null
 }
 
 function normalizeStatus(value: unknown): UserStatus | null {
@@ -330,7 +330,7 @@ export async function createManagedUser(ctx: Context) {
   }
   const username = String(body.username || '').trim()
   const password = String(body.password || '')
-  const role = normalizeRole(body.role || 'admin')
+  const role = normalizeRole(body.role || 'user')
   const status = normalizeStatus(body.status || 'active')
   const profiles = normalizeProfiles(body.profiles)
 

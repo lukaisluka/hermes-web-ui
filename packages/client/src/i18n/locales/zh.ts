@@ -67,6 +67,7 @@ export default {
     roles: {
       superAdmin: '超级管理员',
       admin: '普通管理员',
+      user: '普通用户',
     },
     status: {
       active: '启用',

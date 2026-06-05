@@ -67,6 +67,7 @@ export default {
     roles: {
       superAdmin: '슈퍼 관리자',
       admin: '관리자',
+      user: '일반 사용자',
     },
     status: {
       active: '활성',

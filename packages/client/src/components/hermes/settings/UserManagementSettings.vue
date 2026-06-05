@@ -25,12 +25,13 @@ const editingUser = ref<ManagedUser | null>(null)
 const form = reactive({
   username: '',
   password: '',
-  role: 'admin' as UserRole,
+  role: 'user' as UserRole,
   status: 'active' as UserStatus,
   profiles: [] as string[],
 })
 
 const roleOptions = computed(() => [
+  { label: t('users.roles.user'), value: 'user' },
   { label: t('users.roles.admin'), value: 'admin' },
   { label: t('users.roles.superAdmin'), value: 'super_admin' },
 ])
@@ -46,7 +47,7 @@ function resetForm() {
   editingUser.value = null
   form.username = ''
   form.password = ''
-  form.role = 'admin'
+  form.role = 'user'
   form.status = 'active'
   form.profiles = []
 }
@@ -151,6 +152,12 @@ function formatTime(value: number | null): string {
   return new Date(value).toLocaleString()
 }
 
+function roleLabel(role: UserRole): string {
+  if (role === 'super_admin') return t('users.roles.superAdmin')
+  if (role === 'admin') return t('users.roles.admin')
+  return t('users.roles.user')
+}
+
 const columns = computed<DataTableColumns<ManagedUser>>(() => [
   {
     title: t('users.username'),
@@ -162,7 +169,7 @@ const columns = computed<DataTableColumns<ManagedUser>>(() => [
     key: 'role',
     width: 130,
     render: (row) => h(NTag, { size: 'small', type: row.role === 'super_admin' ? 'warning' : 'default' }, {
-      default: () => row.role === 'super_admin' ? t('users.roles.superAdmin') : t('users.roles.admin'),
+      default: () => roleLabel(row.role),
     }),
   },
   {

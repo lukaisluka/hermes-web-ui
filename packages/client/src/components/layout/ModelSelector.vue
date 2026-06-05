@@ -3,11 +3,15 @@ import { ref, computed } from 'vue'
 import { NModal, NInput, NSelect } from 'naive-ui'
 import { useAppStore } from '@/stores/hermes/app'
 import { useProfilesStore } from '@/stores/hermes/profiles'
+import { useChatStore } from '@/stores/hermes/chat'
 import { useI18n } from 'vue-i18n'
+import { getStoredUserRole } from '@/api/client'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 const profilesStore = useProfilesStore()
+const chatStore = useChatStore()
+const isRegularUser = computed(() => getStoredUserRole() === 'user')
 
 const showModal = ref(false)
 const searchQuery = ref('')
@@ -15,14 +19,22 @@ const collapsedGroups = ref<Record<string, boolean>>({})
 const customInput = ref('')
 const customProvider = ref('')
 
-const activeProfileName = computed(() => profilesStore.activeProfileName || 'default')
+const activeProfileName = computed(() => (
+  isRegularUser.value ? chatStore.activeSession?.profile : ''
+) || profilesStore.activeProfileName || 'default')
+const selectedModel = computed(() => isRegularUser.value
+  ? chatStore.activeSession?.model || appStore.selectedModel
+  : appStore.selectedModel)
+const selectedProvider = computed(() => isRegularUser.value
+  ? chatStore.activeSession?.provider || appStore.selectedProvider
+  : appStore.selectedProvider)
 const activeModelGroups = computed(() => {
   const profileModels = appStore.profileModelGroups.find(entry => entry.profile === activeProfileName.value)
   return profileModels?.groups || []
 })
 
 const providerOptions = computed(() => {
-  const current = appStore.selectedProvider
+  const current = selectedProvider.value
   customProvider.value = current
   return activeModelGroups.value.map(g => ({ label: g.label, value: g.provider }))
 })
@@ -39,13 +51,13 @@ const modelGroupsWithCustom = computed(() =>
 
 const selectedModelInActiveProfile = computed(() =>
   modelGroupsWithCustom.value.some(group =>
-    group.provider === appStore.selectedProvider && group.models.includes(appStore.selectedModel),
+    group.provider === selectedProvider.value && group.models.includes(selectedModel.value),
   ),
 )
 
 const selectedDisplayName = computed(() =>
   selectedModelInActiveProfile.value
-    ? appStore.displayModelName(appStore.selectedModel, appStore.selectedProvider)
+    ? appStore.displayModelName(selectedModel.value, selectedProvider.value)
     : '',
 )
 
@@ -83,10 +95,23 @@ function isGroupCollapsed(provider: string) {
   return !!collapsedGroups.value[provider]
 }
 
-function handleSelect(model: string, provider: string) {
+async function selectModel(model: string, provider: string): Promise<boolean> {
+  if (!isRegularUser.value) {
+    await appStore.switchModel(model, provider)
+    return true
+  }
+  const session = chatStore.activeSession || chatStore.newChat({
+    profile: activeProfileName.value,
+    model,
+    provider,
+  })
+  return chatStore.switchSessionModel(model, provider, session.id)
+}
+
+async function handleSelect(model: string, provider: string) {
   const meta = activeModelGroups.value.find(g => g.provider === provider)?.model_meta?.[model]
   if (meta?.disabled) return
-  appStore.switchModel(model, provider)
+  if (!await selectModel(model, provider)) return
   showModal.value = false
   searchQuery.value = ''
 }
@@ -99,13 +124,14 @@ function modelAlias(model: string, provider: string) {
   return appStore.getModelAlias(model, provider)
 }
 
-function handleCustomSubmit() {
+async function handleCustomSubmit() {
+  if (isRegularUser.value) return
   const model = customInput.value.trim()
   if (!model || !customProvider.value) return
   // 拦截 disabled 模型，避免 custom input 绕过列表里的灰显限制
   const meta = activeModelGroups.value.find(g => g.provider === customProvider.value)?.model_meta?.[model]
   if (meta?.disabled) return
-  appStore.switchModel(model, customProvider.value)
+  if (!await selectModel(model, customProvider.value)) return
   showModal.value = false
   searchQuery.value = ''
   customInput.value = ''
@@ -115,7 +141,7 @@ function openModal() {
   collapsedGroups.value = {}
   searchQuery.value = ''
   customInput.value = ''
-  customProvider.value = appStore.selectedProvider
+  customProvider.value = selectedProvider.value
   showModal.value = true
 }
 </script>
@@ -124,7 +150,7 @@ function openModal() {
   <div class="model-selector">
     <div class="model-label">{{ t('models.title') }}</div>
     <button class="model-trigger" @click="openModal">
-      <span class="model-name" :title="appStore.selectedModel">{{ selectedDisplayName || '—' }}</span>
+      <span class="model-name" :title="selectedModel">{{ selectedDisplayName || '—' }}</span>
       <svg class="model-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 12 15 18 9" />
       </svg>
@@ -163,7 +189,7 @@ function openModal() {
               :key="model"
               class="model-item"
               :class="{
-                active: model === appStore.selectedModel && group.provider === appStore.selectedProvider,
+                active: model === selectedModel && group.provider === selectedProvider,
                 disabled: !!group.model_meta?.[model]?.disabled,
               }"
               :title="group.model_meta?.[model]?.disabled ? t('models.disabledTooltip') : ''"
@@ -179,7 +205,7 @@ function openModal() {
               <span v-if="group.model_meta?.[model]?.disabled" class="model-badge-disabled">{{ t('models.disabledBadge') }}</span>
               <span v-if="isCustomModel(model, group.provider)" class="model-badge-custom">{{ t('models.customBadge') }}</span>
               <button
-                v-if="isCustomModel(model, group.provider)"
+                v-if="!isRegularUser && isCustomModel(model, group.provider)"
                 class="model-custom-remove"
                 type="button"
                 :title="t('models.removeCustomModel')"
@@ -187,7 +213,7 @@ function openModal() {
               >
                 ×
               </button>
-              <svg v-if="model === appStore.selectedModel && group.provider === appStore.selectedProvider" class="model-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg v-if="model === selectedModel && group.provider === selectedProvider" class="model-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
@@ -196,7 +222,7 @@ function openModal() {
         <div v-if="filteredGroups.length === 0" class="model-empty">
           {{ searchQuery ? 'No results' : 'No models' }}
         </div>
-        <div class="model-custom">
+        <div v-if="!isRegularUser" class="model-custom">
           <div class="model-custom-row">
             <NSelect
               v-model:value="customProvider"

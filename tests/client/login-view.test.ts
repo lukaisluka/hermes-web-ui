@@ -2,17 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-const mockReplace = vi.hoisted(() => vi.fn())
 const mockFetchAuthStatus = vi.hoisted(() => vi.fn())
 const mockLoginWithPassword = vi.hoisted(() => vi.fn())
 const mockSetApiKey = vi.hoisted(() => vi.fn())
 const mockHasApiKey = vi.hoisted(() => vi.fn())
-
-vi.mock('vue-router', () => ({
-  useRouter: () => ({
-    replace: mockReplace,
-  }),
-}))
+const mockReplaceAppRoute = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -23,6 +17,7 @@ vi.mock('vue-i18n', () => ({
 vi.mock('@/api/client', () => ({
   setApiKey: mockSetApiKey,
   hasApiKey: mockHasApiKey,
+  replaceAppRoute: mockReplaceAppRoute,
 }))
 
 vi.mock('@/api/auth', () => ({
@@ -51,7 +46,7 @@ describe('LoginView password login', () => {
 
     expect(mockLoginWithPassword).toHaveBeenCalledWith('admin', '123456')
     expect(mockSetApiKey).toHaveBeenCalledWith('jwt-token')
-    expect(mockReplace).toHaveBeenCalledWith('/hermes/chat')
+    expect(mockReplaceAppRoute).toHaveBeenCalledWith('/hermes/chat')
   })
 
   it('shows the default login hint', () => {
@@ -71,7 +66,7 @@ describe('LoginView password login', () => {
 
     expect(wrapper.find('.login-error').text()).toBe('Invalid username or password')
     expect(mockSetApiKey).not.toHaveBeenCalled()
-    expect(mockReplace).not.toHaveBeenCalled()
+    expect(mockReplaceAppRoute).not.toHaveBeenCalled()
   })
 
   it('shows the reset command hint when the login IP is locked', async () => {

@@ -41,6 +41,7 @@ interface SessionCommandContext {
   model_groups?: Array<{ provider: string; models: string[] }>
   instructions?: string
   queueId?: string
+  userId?: string | null
   runQueuedItem: (socket: Socket, sessionId: string, next: QueuedRun, fallbackProfile?: string) => void
 }
 
@@ -379,7 +380,7 @@ export async function handleSessionCommand(
       }
       const title = command.args.slice(0, 120)
       if (!getSession(sessionId)) {
-        createSession({ id: sessionId, profile: ctx.profile, source: 'cli', model: ctx.model, title })
+        createSession({ id: sessionId, profile: ctx.profile, source: 'cli', user_id: ctx.userId, model: ctx.model, title })
       }
       const updated = renameSession(sessionId, title)
       emitCommand({
@@ -656,6 +657,7 @@ function ensureCommandSession(sessionId: string, ctx: SessionCommandContext) {
     id: sessionId,
     profile: ctx.profile,
     source: 'cli',
+    user_id: ctx.userId,
     model: ctx.model,
     title: 'Bridge command',
   })

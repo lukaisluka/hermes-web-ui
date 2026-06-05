@@ -1,5 +1,6 @@
 import type { Context } from 'koa'
 import { updateUsage } from '../../db/hermes/usage-store'
+import { isRegularUser } from '../../middleware/user-auth'
 
 let gatewayManager: any = null
 
@@ -53,8 +54,11 @@ async function waitForGatewayReady(upstream: string, timeoutMs: number = 5000): 
 
 /** Resolve profile name from request */
 function resolveProfile(ctx: Context): string {
-  // Use header/query from request, but fall back to authoritative source if not provided
-  const requestedProfile = ctx.get('x-hermes-profile') || (ctx.query.profile as string)
+  // The auth middleware validates explicit selectors and assigns a safe
+  // authorized fallback for regular users.
+  const requestedProfile = ctx.state?.profile?.name ||
+    ctx.get('x-hermes-profile') ||
+    (ctx.query.profile as string)
 
   if (requestedProfile) {
     return requestedProfile
@@ -106,6 +110,11 @@ function buildProxyHeaders(ctx: Context, upstream: string): Record<string, strin
   }
 
   return headers
+}
+
+function isAllowedProxyRequestForRegularUser(ctx: Context): boolean {
+  const normalized = ctx.path.toLowerCase().replace(/^\/api\/hermes\/v1/, '/v1')
+  return ctx.method === 'GET' && normalized === '/v1/models'
 }
 
 // --- SSE stream interception ---
@@ -188,6 +197,12 @@ async function streamSSE(ctx: Context, res: Response, profile: string): Promise<
 // --- Main proxy function ---
 
 export async function proxy(ctx: Context) {
+  if (isRegularUser(ctx.state?.user) && !isAllowedProxyRequestForRegularUser(ctx)) {
+    ctx.status = 403
+    ctx.body = { error: 'Administrator privileges are required' }
+    return
+  }
+
   const profile = resolveProfile(ctx)
   let upstream: string
   try {

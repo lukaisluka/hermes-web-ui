@@ -11,11 +11,13 @@ import {
 } from '@/api/hermes/jobs'
 import type { CreateJobRequest, Job } from '@/api/hermes/jobs'
 import { useI18n } from 'vue-i18n'
+import { isStoredProfileAdmin } from '@/api/client'
 
 const { t } = useI18n()
 
 const props = defineProps<{
   jobId: string | null
+  jobProfile?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -26,6 +28,7 @@ const emit = defineEmits<{
 const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
 const message = useMessage()
+const canManageSettings = computed(() => isStoredProfileAdmin())
 
 const showModal = ref(true)
 const loading = ref(false)
@@ -88,7 +91,7 @@ const targetOptions = computed(() => {
     { label: t('jobs.origin'), value: 'origin' },
     { label: t('jobs.local'), value: 'local' },
   ]
-  const channels = [
+  const channels = canManageSettings.value ? [
     { key: 'telegram', label: 'Telegram' },
     { key: 'discord', label: 'Discord' },
     { key: 'slack', label: 'Slack' },
@@ -99,7 +102,7 @@ const targetOptions = computed(() => {
     { key: 'feishu', label: 'Feishu' },
     { key: 'dingtalk', label: 'DingTalk' },
     { key: 'qqbot', label: 'QQBot' },
-  ]
+  ] : []
   for (const ch of channels) {
     options.push({
       label: ch.label,
@@ -113,13 +116,13 @@ const targetOptions = computed(() => {
 const originalJob = ref<Job | null>(null)
 
 onMounted(async () => {
-  if (Object.keys(settingsStore.platforms || {}).length === 0) {
+  if (canManageSettings.value && Object.keys(settingsStore.platforms || {}).length === 0) {
     await settingsStore.fetchSettings()
   }
 
   if (props.jobId) {
     try {
-      const job = await getJob(props.jobId)
+      const job = await getJob(props.jobId, props.jobProfile || undefined)
       originalJob.value = job
       formData.value = {
         name: job.name,
@@ -157,7 +160,7 @@ async function handleSave() {
         emit('saved')
         return
       }
-      await jobsStore.updateJob(props.jobId!, payload)
+      await jobsStore.updateJob(props.jobId!, payload, props.jobProfile || undefined)
       message.success(t('jobs.jobUpdated'))
     } else {
       const payload: CreateJobRequest = {

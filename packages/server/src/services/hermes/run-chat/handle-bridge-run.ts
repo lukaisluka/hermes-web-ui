@@ -297,6 +297,7 @@ export async function handleBridgeRun(
   skipUserMessage = false,
   loadSessionStateFromDbFn: (sid: string, sessionMap: Map<string, SessionState>) => Promise<SessionState>,
   dequeueNextQueuedRun: (socket: Socket, sessionId: string, fallbackProfile?: string) => void,
+  userId?: string | null,
 ) {
   const { input, session_id, instructions } = data
   if (!session_id) {
@@ -379,7 +380,7 @@ export async function handleBridgeRun(
     if (!getSession(session_id)) {
       const previewText = extractTextForPreview(displayInput || input)
       const preview = previewText.replace(/[\r\n]/g, ' ').substring(0, 100)
-      createSession({ id: session_id, profile, source: 'cli', model: resolvedModel, provider: resolvedProvider, title: preview })
+      createSession({ id: session_id, profile, source: 'cli', user_id: userId, model: resolvedModel, provider: resolvedProvider, title: preview })
     }
     messageId = addMessage({
       session_id,
@@ -390,7 +391,7 @@ export async function handleBridgeRun(
   } else if (!getSession(session_id)) {
     const previewText = displayInput === null ? extractTextForPreview(input) : extractTextForPreview(displayInput || input)
     const preview = previewText.replace(/[\r\n]/g, ' ').substring(0, 100)
-    createSession({ id: session_id, profile, source: 'cli', model: resolvedModel, provider: resolvedProvider, title: preview })
+    createSession({ id: session_id, profile, source: 'cli', user_id: userId, model: resolvedModel, provider: resolvedProvider, title: preview })
   }
 
   socket.join(`session:${session_id}`)

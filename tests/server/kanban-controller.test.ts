@@ -80,6 +80,11 @@ vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
   listUserProfiles: mockListUserProfiles,
 }))
 
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isRegularUser: (user: any) => user?.role === 'user',
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
+}))
+
 import * as ctrl from '../../packages/server/src/controllers/hermes/kanban'
 
 function ctx(overrides: Record<string, any> = {}) {
@@ -212,6 +217,91 @@ describe('kanban controller', () => {
     await ctrl.assign(assignCtx)
     expect(assignCtx.status).toBe(403)
     expect(mockAssignTask).not.toHaveBeenCalled()
+  })
+
+  it('rejects regular-user mutations against tasks assigned to unauthorized profiles', async () => {
+    mockGetTask.mockResolvedValue({
+      task: { id: 'task-1', assignee: 'travel', status: 'ready' },
+      runs: [],
+      comments: [],
+      events: [],
+    })
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'research' } }
+    const commentCtx = ctx({
+      state,
+      query: { board: 'default' },
+      params: { id: 'task-1' },
+      request: { body: { body: 'not allowed' } },
+    })
+
+    await ctrl.addComment(commentCtx)
+
+    expect(commentCtx.status).toBe(403)
+    expect(mockAddComment).not.toHaveBeenCalled()
+  })
+
+  it('rejects regular-user dispatch when the board contains unauthorized ready tasks', async () => {
+    mockListTasks.mockResolvedValue([
+      { id: 'task-1', assignee: 'research', status: 'ready' },
+      { id: 'task-2', assignee: 'travel', status: 'ready' },
+    ])
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'research' } }
+    const dispatchCtx = ctx({
+      state,
+      query: { board: 'default' },
+      request: { body: { dryRun: true } },
+    })
+
+    await ctrl.dispatch(dispatchCtx)
+
+    expect(dispatchCtx.status).toBe(403)
+    expect(mockDispatch).not.toHaveBeenCalled()
+  })
+
+  it('limits regular-user kanban session search to an authorized related task', async () => {
+    mockListUserProfiles.mockReturnValue([{ profile_name: 'research' }, { profile_name: 'travel' }])
+    mockGetTask.mockResolvedValue({
+      task: { id: 'task-1', assignee: 'research', status: 'done' },
+      runs: [{ profile: 'research' }],
+      comments: [],
+      events: [],
+    })
+    mockFindLatestExactSessionId.mockResolvedValue('session-1')
+    mockGetExactSessionDetail.mockResolvedValue({
+      id: 'session-1',
+      source: 'codex',
+      title: 'Task session',
+      preview: 'done',
+      model: 'gpt-5.5',
+      started_at: 1,
+      ended_at: 2,
+      last_active: 2,
+      message_count: 1,
+      tool_call_count: 0,
+      input_tokens: 1,
+      output_tokens: 1,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      reasoning_tokens: 0,
+      billing_provider: null,
+      estimated_cost_usd: 0,
+      actual_cost_usd: null,
+      cost_status: '',
+    })
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'research' } }
+
+    const allowedCtx = ctx({ state, query: { board: 'default', task_id: 'task-1', profile: 'research' } })
+    await ctrl.searchSessions(allowedCtx)
+    expect(allowedCtx.body.results[0]).toMatchObject({ id: 'session-1' })
+
+    const unrelatedProfileCtx = ctx({ state, query: { board: 'default', task_id: 'task-1', profile: 'travel' } })
+    await ctrl.searchSessions(unrelatedProfileCtx)
+    expect(unrelatedProfileCtx.status).toBe(403)
+
+    const customQueryCtx = ctx({ state, query: { board: 'default', task_id: 'task-1', profile: 'research', q: 'private' } })
+    await ctrl.searchSessions(customQueryCtx)
+    expect(customQueryCtx.status).toBe(403)
+    expect(mockSearchSessions).not.toHaveBeenCalled()
   })
 
   it('proxies comment/log/diagnostics with explicit board context', async () => {

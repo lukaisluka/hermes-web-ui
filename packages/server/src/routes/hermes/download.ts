@@ -4,10 +4,14 @@ import {
   createFileProvider,
   localProvider,
   isInUploadDir,
+  isSensitivePath,
   validatePath,
   resolveHermesPath,
 } from '../../services/hermes/file-provider'
-import { getActiveProfileName } from '../../services/hermes/hermes-profile'
+import { getActiveProfileName, getProfileDir } from '../../services/hermes/hermes-profile'
+import { isPathWithin } from '../../services/hermes/hermes-path'
+import { isInProfileUploadDir } from '../../services/hermes/upload-paths'
+import { isRegularUser } from '../../middleware/user-auth'
 
 export const downloadRoutes = new Router()
 
@@ -67,6 +71,13 @@ function requestedProfile(ctx: any): string {
   return ctx.state?.profile?.name || getActiveProfileName() || 'default'
 }
 
+function isForbiddenDownloadPath(ctx: any, filePath: string): boolean {
+  if (isSensitivePath(filePath)) return true
+  if (!isRegularUser(ctx.state?.user)) return false
+  const fileName = basename(filePath).toLowerCase()
+  return fileName === 'config.yaml' || fileName.startsWith('config.yaml.')
+}
+
 downloadRoutes.get('/api/hermes/download', async (ctx) => {
   const filePath = ctx.query.path as string | undefined
   const fileName = ctx.query.name as string | undefined
@@ -76,12 +87,24 @@ downloadRoutes.get('/api/hermes/download', async (ctx) => {
     ctx.body = { error: 'Missing path parameter', code: 'missing_path' }
     return
   }
+  if (isForbiddenDownloadPath(ctx, filePath)) {
+    ctx.status = 403
+    ctx.body = { error: 'Cannot download sensitive file', code: 'permission_denied' }
+    return
+  }
 
   try {
     const profile = requestedProfile(ctx)
     // Validate the path first
     // Support both absolute and relative paths
     const validPath = isAbsolute(filePath) ? validatePath(filePath) : resolveHermesPath(filePath, profile)
+    if (isRegularUser(ctx.state?.user) &&
+      !isPathWithin(validPath, getProfileDir(profile)) &&
+      !isInProfileUploadDir(validPath, profile)) {
+      ctx.status = 403
+      ctx.body = { error: 'File is not available for this user', code: 'permission_denied' }
+      return
+    }
 
     // Choose provider: always use local for upload directory files
     let data: Buffer
@@ -109,6 +132,7 @@ downloadRoutes.get('/api/hermes/download', async (ctx) => {
       invalid_path: 400,
       not_found: 404,
       ENOENT: 404,
+      permission_denied: 403,
       file_too_large: 413,
       unsupported_backend: 501,
       backend_error: 502,

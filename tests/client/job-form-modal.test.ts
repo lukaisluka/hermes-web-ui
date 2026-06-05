@@ -31,6 +31,7 @@ const mockJobsStore = vi.hoisted(() => ({
   createJob: vi.fn(),
   updateJob: vi.fn(),
 }))
+const profileAdminState = vi.hoisted(() => ({ value: true }))
 
 vi.mock('@/stores/hermes/settings', () => ({
   useSettingsStore: () => mockSettingsStore,
@@ -38,6 +39,10 @@ vi.mock('@/stores/hermes/settings', () => ({
 
 vi.mock('@/stores/hermes/jobs', () => ({
   useJobsStore: () => mockJobsStore,
+}))
+
+vi.mock('@/api/client', () => ({
+  isStoredProfileAdmin: () => profileAdminState.value,
 }))
 
 vi.mock('@/api/hermes/jobs', async () => {
@@ -88,6 +93,7 @@ describe('JobFormModal deliver targets', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSettingsStore.platforms = {}
+    profileAdminState.value = true
   })
 
   it('loads platform settings when the store has not been hydrated', async () => {
@@ -131,5 +137,20 @@ describe('JobFormModal deliver targets', () => {
     expect(optionByValue.qqbot.attributes('disabled')).toBeUndefined()
     expect(optionByValue.discord.attributes('disabled')).toBe('')
     expect(optionByValue.whatsapp.attributes('disabled')).toBe('')
+  })
+
+  it('does not load protected settings or expose channel targets to regular users', async () => {
+    profileAdminState.value = false
+    const wrapper = mount(JobFormModal, {
+      props: { jobId: null },
+    })
+
+    await flushPromises()
+
+    expect(mockSettingsStore.fetchSettings).not.toHaveBeenCalled()
+    const labels = wrapper.findAll('.n-select-stub')[1].text()
+    expect(labels).toContain('jobs.origin')
+    expect(labels).toContain('jobs.local')
+    expect(labels).not.toContain('Telegram')
   })
 })

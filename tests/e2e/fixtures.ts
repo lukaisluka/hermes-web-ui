@@ -1,6 +1,15 @@
 import type { Page, Request, Route } from '@playwright/test'
 
-export const TEST_ACCESS_KEY = 'playwright-access-key'
+export type TestUserRole = 'super_admin' | 'admin' | 'user'
+
+function testAccessKey(role: TestUserRole): string {
+  const payload = Buffer.from(JSON.stringify({ sub: '1', username: 'playwright', role })).toString('base64url')
+  return `header.${payload}.signature`
+}
+
+export const TEST_ACCESS_KEY = testAccessKey('super_admin')
+export const TEST_ADMIN_ACCESS_KEY = testAccessKey('admin')
+export const TEST_USER_ACCESS_KEY = testAccessKey('user')
 
 export interface MockedRequest {
   method: string
@@ -14,6 +23,7 @@ interface MockHermesApiOptions {
   tokenValidationStatus?: number
   initialProfileName?: 'default' | 'research'
   sessions?: unknown[]
+  userRole?: TestUserRole
 }
 
 const sampleModelGroup = {
@@ -29,6 +39,7 @@ const sampleModelGroup = {
 const sampleJob = {
   job_id: 'job-smoke',
   id: 'job-smoke',
+  profile: 'research',
   name: 'Nightly Smoke',
   prompt: 'Run the smoke check',
   prompt_preview: 'Run the smoke check',
@@ -94,6 +105,7 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
   const requests: MockedRequest[] = []
   const unexpectedRequests: MockedRequest[] = []
   const tokenValidationStatus = options.tokenValidationStatus ?? 200
+  const userRole = options.userRole ?? 'super_admin'
   let activeProfileName = options.initialProfileName ?? 'research'
 
   await page.route('**/*', async (route: Route) => {
@@ -127,7 +139,7 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
         await route.fulfill(jsonResponse({ error: 'Invalid username or password' }, tokenValidationStatus))
         return
       }
-      await route.fulfill(jsonResponse({ token: TEST_ACCESS_KEY }))
+      await route.fulfill(jsonResponse({ token: testAccessKey(userRole) }))
       return
     }
 
@@ -136,7 +148,7 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
         user: {
           id: 1,
           username: 'playwright',
-          role: 'super_admin',
+          role: userRole,
           status: 'active',
           created_at: 0,
           updated_at: 0,
@@ -175,6 +187,11 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
       return
     }
 
+    if (pathname.startsWith('/api/hermes/sessions/conversations/') && pathname.endsWith('/messages/paginated')) {
+      await route.fulfill(jsonResponse({ messages: [], total: 0 }))
+      return
+    }
+
     if (pathname === '/api/hermes/files/list') {
       await route.fulfill(jsonResponse({ entries: [], path: '' }))
       return
@@ -198,6 +215,10 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
         allProviders: [sampleModelGroup],
         model_aliases: {},
         model_visibility: {},
+        profiles: [
+          { profile: 'default', default: 'test-model', default_provider: 'test-provider', groups: [sampleModelGroup] },
+          { profile: 'research', default: 'test-model', default_provider: 'test-provider', groups: [sampleModelGroup] },
+        ],
       }))
       return
     }
@@ -223,6 +244,10 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
     }
 
     if (pathname === '/api/hermes/profiles/runtime-statuses') {
+      if (userRole === 'user') {
+        await route.fulfill(jsonResponse({ error: 'Administrator privileges are required' }, 403))
+        return
+      }
       await route.fulfill(jsonResponse({
         profiles: [
           {
@@ -265,6 +290,10 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
     }
 
     if (pathname === '/api/hermes/config') {
+      if (userRole === 'user') {
+        await route.fulfill(jsonResponse({ error: 'Administrator privileges are required' }, 403))
+        return
+      }
       await route.fulfill(jsonResponse({
         display: { streaming: true, show_reasoning: true, show_cost: true },
         agent: {},
@@ -283,6 +312,29 @@ export async function mockHermesApi(page: Page, options: MockHermesApiOptions = 
 
     if (pathname === '/api/cron-history') {
       await route.fulfill(jsonResponse({ runs: [] }))
+      return
+    }
+
+    if (pathname === '/api/auth/users') {
+      await route.fulfill(jsonResponse({
+        users: [
+          { id: 1, username: 'playwright', role: userRole, status: 'active', created_at: 0, updated_at: 0, last_login_at: 0 },
+        ],
+        profiles: [
+          { name: 'default', alias: 'Default' },
+          { name: 'research', alias: 'Research' },
+        ],
+      }))
+      return
+    }
+
+    if (pathname === '/api/auth/change-password') {
+      await route.fulfill(jsonResponse({ success: true }))
+      return
+    }
+
+    if (pathname === '/api/auth/change-username') {
+      await route.fulfill(jsonResponse({ success: true }))
       return
     }
 

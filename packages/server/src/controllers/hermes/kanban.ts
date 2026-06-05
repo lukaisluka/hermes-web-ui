@@ -12,6 +12,7 @@ import {
   findLatestExactSessionIdWithProfile,
 } from '../../db/hermes/sessions-db'
 import { listUserProfiles } from '../../db/hermes/users-store'
+import { isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
 
 const DEFAULT_PROFILE = 'default'
 
@@ -25,7 +26,7 @@ function requestedProfile(ctx: Context): string | null {
 
 function allowedProfileSet(ctx: Context): Set<string> | null {
   const user = ctx.state?.user
-  if (!user || user.role === 'super_admin') return null
+  if (!user || isSuperAdmin(user)) return null
   return new Set(listUserProfiles(user.id).map(profile => profile.profile_name))
 }
 
@@ -43,6 +44,29 @@ function denyProfileAccess(ctx: Context, profile: string | null | undefined): bo
   ctx.status = 403
   ctx.body = { error: `Profile "${profileName(profile)}" is not available for this user` }
   return true
+}
+
+async function rejectRegularUserTaskAccess(ctx: Context, board: string, taskId: string): Promise<boolean> {
+  if (!isRegularUser(ctx.state?.user)) return false
+  const detail = await kanbanCli.getTask(taskId, { board })
+  if (!detail) {
+    ctx.status = 404
+    ctx.body = { error: 'Task not found' }
+    return true
+  }
+  if (!canUseProfile(ctx, detail.task.assignee)) {
+    ctx.status = 403
+    ctx.body = { error: `Profile "${taskAssigneeProfile(detail.task)}" is not available for this user` }
+    return true
+  }
+  return false
+}
+
+async function rejectRegularUserTaskListAccess(ctx: Context, board: string, taskIds: string[]): Promise<boolean> {
+  for (const taskId of taskIds) {
+    if (await rejectRegularUserTaskAccess(ctx, board, taskId)) return true
+  }
+  return false
 }
 
 function taskAssigneeProfile(task: { assignee: string | null }): string {
@@ -69,7 +93,7 @@ function statsForTasks(tasks: kanbanCli.KanbanTask[]): kanbanCli.KanbanStats {
 function assignableProfileNames(ctx: Context): Set<string> | null {
   const user = ctx.state?.user
   if (!user) return null
-  if (user.role === 'super_admin') return new Set(listProfileNamesFromDisk())
+  if (isSuperAdmin(user)) return new Set(listProfileNamesFromDisk())
   return new Set(listUserProfiles(user.id).map(profile => profile.profile_name))
 }
 
@@ -414,6 +438,7 @@ export async function complete(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskListAccess(ctx, board, taskIds.value!)) return
     await kanbanCli.completeTasks(taskIds.value!, summary.value, { board })
     ctx.body = { ok: true }
   } catch (err: any) {
@@ -430,6 +455,7 @@ export async function block(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
     await kanbanCli.blockTask(ctx.params.id, reason.value!, { board })
     ctx.body = { ok: true }
   } catch (err: any) {
@@ -446,6 +472,7 @@ export async function unblock(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskListAccess(ctx, board, taskIds.value!)) return
     await kanbanCli.unblockTasks(taskIds.value!, { board })
     ctx.body = { ok: true }
   } catch (err: any) {
@@ -463,6 +490,7 @@ export async function assign(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
     await kanbanCli.assignTask(ctx.params.id, profile.value!, { board })
     ctx.body = { ok: true }
   } catch (err: any) {
@@ -481,6 +509,7 @@ export async function addComment(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
     ctx.body = await kanbanCli.addComment(ctx.params.id, body.value!, { board, author: author.value })
   } catch (err: any) {
     ctx.status = 500
@@ -497,6 +526,7 @@ export async function linkTasks(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskListAccess(ctx, board, [parentId.value!, childId.value!])) return
     ctx.body = await kanbanCli.linkTasks(parentId.value!.trim(), childId.value!.trim(), { board })
   } catch (err: any) {
     ctx.status = 500
@@ -511,6 +541,7 @@ export async function unlinkTasks(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskListAccess(ctx, board, [parentId.value!, childId.value!])) return
     ctx.body = await kanbanCli.unlinkTasks(parentId.value!.trim(), childId.value!.trim(), { board })
   } catch (err: any) {
     ctx.status = 500
@@ -548,6 +579,7 @@ export async function bulkUpdateTasks(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskListAccess(ctx, board, ids.value!)) return
     ctx.body = await kanbanCli.bulkUpdateTasks({
       board,
       ids: ids.value!.map(id => id.trim()),
@@ -570,6 +602,7 @@ export async function taskLog(ctx: Context) {
   const tail = optionalPositiveIntegerQuery(tailRaw, 'tail', MAX_LOG_TAIL_BYTES)
   if (rejectBadRequest(ctx, tail.error)) return
   try {
+    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
     ctx.body = await kanbanCli.getTaskLog(ctx.params.id, { board, tail: tail.value })
   } catch (err: any) {
     ctx.status = err.message?.includes('not found') ? 404 : 500
@@ -588,6 +621,12 @@ export async function diagnostics(ctx: Context) {
     return
   }
   try {
+    if (isRegularUser(ctx.state?.user) && !task) {
+      ctx.status = 403
+      ctx.body = { error: 'Task-scoped diagnostics are required for regular users' }
+      return
+    }
+    if (task && await rejectRegularUserTaskAccess(ctx, board, task)) return
     const diagnostics = await kanbanCli.getDiagnostics({ board, task, severity })
     ctx.body = { diagnostics }
   } catch (err: any) {
@@ -605,6 +644,7 @@ export async function reclaim(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
     ctx.body = await kanbanCli.reclaimTask(ctx.params.id, { board, reason: reason.value })
   } catch (err: any) {
     ctx.status = 500
@@ -624,6 +664,7 @@ export async function reassign(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
     ctx.body = await kanbanCli.reassignTask(ctx.params.id, profile.value!, { board, reclaim: reclaim.value, reason: reason.value })
   } catch (err: any) {
     ctx.status = 500
@@ -640,6 +681,7 @@ export async function specify(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
     const results = await kanbanCli.specifyTask(ctx.params.id, { board, author: author.value })
     ctx.body = { results }
   } catch (err: any) {
@@ -659,6 +701,15 @@ export async function dispatch(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
+    if (isRegularUser(ctx.state?.user)) {
+      const readyTasks = await kanbanCli.listTasks({ board, status: 'ready' })
+      const unauthorizedTask = readyTasks.find(task => !canUseProfile(ctx, task.assignee))
+      if (unauthorizedTask) {
+        ctx.status = 403
+        ctx.body = { error: 'Dispatch cannot include tasks from unauthorized profiles' }
+        return
+      }
+    }
     const result = await kanbanCli.dispatch({ board, dryRun: dryRun.value, max: max.value, failureLimit: failureLimit.value })
     ctx.body = { result }
   } catch (err: any) {
@@ -695,6 +746,11 @@ export async function assignees(ctx: Context) {
 }
 
 export async function readArtifact(ctx: Context) {
+  if (isRegularUser(ctx.state?.user)) {
+    ctx.status = 403
+    ctx.body = { error: 'Kanban artifact access is not available for regular users' }
+    return
+  }
   const filePath = ctx.query.path as string | undefined
   if (!filePath) {
     ctx.status = 400
@@ -738,6 +794,36 @@ export async function searchSessions(ctx: Context) {
   }
   if (denyProfileAccess(ctx, profile)) return
   try {
+    if (isRegularUser(ctx.state?.user)) {
+      const board = requestBoard(ctx)
+      if (!board) return
+      const detail = await kanbanCli.getTask(task_id, { board })
+      if (!detail) {
+        ctx.status = 404
+        ctx.body = { error: 'Task not found' }
+        return
+      }
+      if (!filterTasksByVisibleProfiles(ctx, [detail.task]).length) {
+        ctx.status = 403
+        ctx.body = { error: 'Task is not available for this user' }
+        return
+      }
+      const taskProfiles = new Set([
+        taskAssigneeProfile(detail.task),
+        ...detail.runs.flatMap(run => run.profile ? [profileName(run.profile)] : []),
+      ])
+      if (!taskProfiles.has(profile)) {
+        ctx.status = 403
+        ctx.body = { error: 'Profile is not associated with this task' }
+        return
+      }
+      if (q) {
+        ctx.status = 403
+        ctx.body = { error: 'Custom session search is not available for regular users' }
+        return
+      }
+    }
+
     if (!q) {
       const exactSessionId = await findLatestExactSessionIdWithProfile(task_id, profile)
       if (exactSessionId) {

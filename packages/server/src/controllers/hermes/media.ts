@@ -4,6 +4,10 @@ import { dirname, extname, isAbsolute, join, resolve } from 'path'
 import { getActiveProfileName, getProfileDir, listProfileNamesFromDisk } from '../../services/hermes/hermes-profile'
 import { config } from '../../config'
 import { readConfigYamlForProfile } from '../../services/config-helpers'
+import { isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
+import { isSensitivePath } from '../../services/hermes/file-provider'
+import { isPathWithin } from '../../services/hermes/hermes-path'
+import { isInProfileUploadDir } from '../../services/hermes/upload-paths'
 
 const XAI_VIDEO_GENERATIONS_URL = 'https://api.x.ai/v1/videos/generations'
 const XAI_VIDEO_STATUS_URL = 'https://api.x.ai/v1/videos'
@@ -38,7 +42,7 @@ function requestedProfileName(ctx: Context): string {
 
 function resolveMediaProfile(ctx: Context): string {
   let requested = requestedProfileName(ctx)
-  if (!requested && ctx.state.user?.role !== 'super_admin' && !ctx.state.serverTokenAuth) {
+  if (!requested && !isSuperAdmin(ctx.state.user) && !ctx.state.serverTokenAuth) {
     const profiles = ctx.state.user?.profiles || []
     if (profiles.length === 1) {
       requested = profiles[0]
@@ -62,6 +66,19 @@ function resolveMediaProfile(ctx: Context): string {
 
 function authPathForProfile(profile: string): string {
   return join(getProfileDir(profile), 'auth.json')
+}
+
+export function validateRegularUserMediaPath(ctx: Context, profile: string, path: string): string {
+  const resolvedPath = isAbsolute(path) ? resolve(path) : resolve(process.cwd(), path)
+  if (!isRegularUser(ctx.state.user)) return resolvedPath
+  if (isSensitivePath(resolvedPath) ||
+    (!isPathWithin(resolvedPath, getProfileDir(profile)) && !isInProfileUploadDir(resolvedPath, profile))) {
+    const err: any = new Error('Media path is not available for this user')
+    err.status = 403
+    err.code = 'permission_denied'
+    throw err
+  }
+  return resolvedPath
 }
 
 function readJsonFile(path: string): any {
@@ -144,7 +161,7 @@ function imagePathToDataUri(imagePath: string): string {
   return `data:${mime};base64,${image.toString('base64')}`
 }
 
-function normalizeImageInput(body: any): string {
+function normalizeImageInput(body: any, resolveImagePath: (path: string) => string = path => path): string {
   const imageUrl = typeof body.image_url === 'string' ? body.image_url.trim() : ''
   if (imageUrl) return imageUrl
 
@@ -166,12 +183,13 @@ function normalizeImageInput(body: any): string {
     err.status = 400
     throw err
   }
-  if (!existsSync(isAbsolute(imagePath) ? imagePath : resolve(process.cwd(), imagePath))) {
+  const resolvedPath = resolveImagePath(imagePath)
+  if (!existsSync(isAbsolute(resolvedPath) ? resolvedPath : resolve(process.cwd(), resolvedPath))) {
     const err: any = new Error('image_path does not exist')
     err.status = 404
     throw err
   }
-  return imagePathToDataUri(imagePath)
+  return imagePathToDataUri(resolvedPath)
 }
 
 function imageDataUriToBytes(dataUri: string): { buffer: Buffer; mime: string; name: string } {
@@ -217,7 +235,10 @@ async function fetchImageBytes(url: string): Promise<{ buffer: Buffer; mime: str
   return { buffer, mime, name }
 }
 
-async function normalizeImageFile(body: any): Promise<{ buffer: Buffer; mime: string; name: string }> {
+async function normalizeImageFile(
+  body: any,
+  resolveImagePath: (path: string) => string = path => path,
+): Promise<{ buffer: Buffer; mime: string; name: string }> {
   const imageUrl = typeof body.image_url === 'string' ? body.image_url.trim() : ''
   if (imageUrl) return fetchImageBytes(imageUrl)
 
@@ -235,7 +256,7 @@ async function normalizeImageFile(body: any): Promise<{ buffer: Buffer; mime: st
     err.status = 400
     throw err
   }
-  const resolvedPath = isAbsolute(imagePath) ? imagePath : resolve(process.cwd(), imagePath)
+  const resolvedPath = resolveImagePath(imagePath)
   if (!existsSync(resolvedPath)) {
     const err: any = new Error('image_path does not exist')
     err.status = 404
@@ -351,7 +372,12 @@ async function readSseImageResults(res: Response, limit: number): Promise<string
   return images.slice(0, limit)
 }
 
-async function requestApiKeyImage(provider: FunCodexProvider, mode: ApiKeyImageMode, body: any): Promise<string[]> {
+async function requestApiKeyImage(
+  provider: FunCodexProvider,
+  mode: ApiKeyImageMode,
+  body: any,
+  resolveImagePath: (path: string) => string = path => path,
+): Promise<string[]> {
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
   if (!prompt) {
     const err: any = new Error('prompt is required')
@@ -394,7 +420,7 @@ async function requestApiKeyImage(provider: FunCodexProvider, mode: ApiKeyImageM
           role: 'user',
           content: [
             { type: 'input_text', text: prompt },
-            { type: 'input_image', image_url: normalizeImageInput(body) },
+            { type: 'input_image', image_url: normalizeImageInput(body, resolveImagePath) },
           ],
         }],
         tools: [{
@@ -408,7 +434,7 @@ async function requestApiKeyImage(provider: FunCodexProvider, mode: ApiKeyImageM
       }),
     })
   } else {
-    const image = await normalizeImageFile(body)
+    const image = await normalizeImageFile(body, resolveImagePath)
     const imageBytes = new Uint8Array(image.buffer.byteLength)
     imageBytes.set(image.buffer)
     const form = new FormData()
@@ -479,9 +505,17 @@ export async function apiKeyImageGenerate(ctx: Context) {
   const body = ctx.request.body as any
   try {
     const mode = normalizeImageMode(body.mode)
-    const images = await requestApiKeyImage(provider, mode, body)
+    const images = await requestApiKeyImage(
+      provider,
+      mode,
+      body,
+      path => validateRegularUserMediaPath(ctx, profile, path),
+    )
     const requestedOutputPath = typeof body.output_path === 'string' ? body.output_path.trim() : ''
-    const outputPaths = saveGeneratedImages(images, requestedOutputPath || undefined)
+    const outputPaths = saveGeneratedImages(
+      images,
+      requestedOutputPath ? validateRegularUserMediaPath(ctx, profile, requestedOutputPath) : undefined,
+    )
     ctx.body = {
       ok: true,
       mode,
@@ -558,13 +592,16 @@ export async function grokImageToVideo(ctx: Context) {
   }
 
   try {
-    const image = normalizeImageInput(body)
+    const image = normalizeImageInput(body, path => validateRegularUserMediaPath(ctx, profile, path))
     const duration = normalizeDuration(body.duration)
     const rawTimeoutMs = Number(body.timeout_ms || DEFAULT_TIMEOUT_MS)
     const timeoutMs = Number.isFinite(rawTimeoutMs)
       ? Math.max(10000, Math.min(rawTimeoutMs, 30 * 60 * 1000))
       : DEFAULT_TIMEOUT_MS
     const requestedOutputPath = typeof body.output_path === 'string' ? body.output_path.trim() : ''
+    const outputPath = requestedOutputPath
+      ? validateRegularUserMediaPath(ctx, profile, requestedOutputPath)
+      : ''
 
     const started = await requestXaiJson(XAI_VIDEO_GENERATIONS_URL, tokenInfo.token, {
       method: 'POST',
@@ -586,13 +623,13 @@ export async function grokImageToVideo(ctx: Context) {
       latest = await requestXaiJson(`${XAI_VIDEO_STATUS_URL}/${encodeURIComponent(requestId)}`, tokenInfo.token)
       if (latest?.status === 'done') {
         const videoUrl = String(latest?.video?.url || '').trim()
-        const outputPath = requestedOutputPath || defaultMediaOutputPath(requestId)
-        if (videoUrl) await downloadVideo(videoUrl, outputPath)
+        const savedOutputPath = outputPath || defaultMediaOutputPath(requestId)
+        if (videoUrl) await downloadVideo(videoUrl, savedOutputPath)
         ctx.body = {
           request_id: requestId,
           status: latest.status,
           video_url: videoUrl,
-          output_path: outputPath,
+          output_path: savedOutputPath,
           token_source: tokenInfo.source,
           profile,
         }

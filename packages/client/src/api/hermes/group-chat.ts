@@ -6,6 +6,7 @@ import { request, getApiKey } from '../client'
 export interface RoomInfo {
     id: string
     name: string
+    profile?: string | null
     inviteCode: string | null
     triggerTokens?: number
     maxHistoryTokens?: number

@@ -8,6 +8,21 @@ vi.mock('../../packages/server/src/controllers/hermes/plugins', () => ({
   list: listMock,
 }))
 
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  requireProfileAdmin: vi.fn(async (_ctx: any, next: any) => { await next() }),
+}))
+
+async function runLayer(layer: any, ctx: any) {
+  let index = -1
+  async function dispatch(i: number): Promise<void> {
+    if (i <= index) throw new Error('next() called multiple times')
+    index = i
+    const fn = layer.stack[i]
+    if (fn) await fn(ctx, () => dispatch(i + 1))
+  }
+  await dispatch(0)
+}
+
 describe('plugin routes', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -26,9 +41,9 @@ describe('plugin routes', () => {
     const layer = pluginRoutes.stack.find((entry: any) => entry.path === '/api/hermes/plugins')
     const ctx: any = { body: null, params: {}, query: {} }
 
-    await layer.stack[0](ctx)
+    await runLayer(layer, ctx)
 
-    expect(listMock).toHaveBeenCalledWith(ctx)
+    expect(listMock).toHaveBeenCalledWith(ctx, expect.any(Function))
     expect(ctx.body).toEqual({ plugins: [], warnings: [], metadata: {} })
   })
 })

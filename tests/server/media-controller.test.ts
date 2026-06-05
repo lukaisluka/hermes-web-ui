@@ -1,6 +1,11 @@
 import { join } from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isRegularUser: (user: any) => user?.role === 'user',
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
+}))
+
 const originalWebUiHome = process.env.HERMES_WEB_UI_HOME
 const originalWebuiStateDir = process.env.HERMES_WEBUI_STATE_DIR
 
@@ -21,5 +26,16 @@ describe('media controller', () => {
     expect(defaultMediaOutputPath('bad/request:id')).toBe(join('/tmp/hermes-web-ui-test-home', 'media', 'bad_request_id.mp4'))
     expect(defaultImageOutputPath('img_123')).toBe(join('/tmp/hermes-web-ui-test-home', 'media', 'img_123.png'))
     expect(defaultImageOutputPath('bad/request:id', 1)).toBe(join('/tmp/hermes-web-ui-test-home', 'media', 'bad_request_id-2.png'))
+  })
+
+  it('limits regular-user media paths to the selected profile', async () => {
+    const { validateRegularUserMediaPath } = await import('../../packages/server/src/controllers/hermes/media')
+    const { getProfileDir } = await import('../../packages/server/src/services/hermes/hermes-profile')
+    const profilePath = join(getProfileDir('research'), 'images', 'source.png')
+    const ctx = { state: { user: { role: 'user' } } } as any
+
+    expect(validateRegularUserMediaPath(ctx, 'research', profilePath)).toBe(profilePath)
+    expect(() => validateRegularUserMediaPath(ctx, 'research', '/tmp/private.png')).toThrow('not available')
+    expect(() => validateRegularUserMediaPath(ctx, 'research', join(getProfileDir('research'), 'auth.json'))).toThrow('not available')
   })
 })

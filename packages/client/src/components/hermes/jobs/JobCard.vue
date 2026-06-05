@@ -12,8 +12,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  edit: [jobId: string]
-  select: [jobId: string]
+  edit: [jobId: string, profile?: string]
+  select: [jobId: string, profile?: string]
 }>()
 
 const { t } = useI18n()
@@ -45,7 +45,7 @@ const formatTime = (t?: string | null) => {
 
 async function handlePause() {
   try {
-    await jobsStore.pauseJob(jobId.value)
+    await jobsStore.pauseJob(jobId.value, props.job.profile)
     message.success(t('jobs.jobPaused'))
   } catch (e: any) {
     message.error(e.message)
@@ -54,7 +54,7 @@ async function handlePause() {
 
 async function handleResume() {
   try {
-    await jobsStore.resumeJob(jobId.value)
+    await jobsStore.resumeJob(jobId.value, props.job.profile)
     message.success(t('jobs.jobResumed'))
   } catch (e: any) {
     message.error(e.message)
@@ -63,7 +63,7 @@ async function handleResume() {
 
 async function handleRun() {
   try {
-    await jobsStore.runJob(jobId.value)
+    await jobsStore.runJob(jobId.value, props.job.profile)
     message.info(t('jobs.jobTriggered'))
   } catch (e: any) {
     message.error(e.message)
@@ -72,7 +72,7 @@ async function handleRun() {
 
 async function handleDelete() {
   try {
-    await jobsStore.deleteJob(jobId.value)
+    await jobsStore.deleteJob(jobId.value, props.job.profile)
     message.success(t('jobs.jobDeleted'))
   } catch (e: any) {
     message.error(e.message)
@@ -82,7 +82,7 @@ async function handleDelete() {
 function handleCardClick(e: MouseEvent) {
   const target = e.target as HTMLElement
   if (target.closest('.card-actions')) return
-  emit('select', jobId.value)
+  emit('select', jobId.value, props.job.profile)
 }
 </script>
 
@@ -97,6 +97,10 @@ function handleCardClick(e: MouseEvent) {
       <div class="info-row">
         <span class="info-label">{{ t('jobs.info.schedule') }}</span>
         <code class="info-value mono">{{ scheduleExpr }}</code>
+      </div>
+      <div v-if="job.profile" class="info-row">
+        <span class="info-label">{{ t('sidebar.profiles') }}</span>
+        <span class="info-value mono">{{ job.profile }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">{{ t('jobs.info.model') }}</span>
@@ -147,7 +151,7 @@ function handleCardClick(e: MouseEvent) {
         </template>
         {{ t('jobs.action.triggerImmediately') }}
       </NTooltip>
-      <NButton size="tiny" quaternary @click.stop="emit('edit', jobId)">{{ t('common.edit') }}</NButton>
+      <NButton size="tiny" quaternary @click.stop="emit('edit', jobId, job.profile)">{{ t('common.edit') }}</NButton>
       <NButton size="tiny" quaternary type="error" @click.stop="handleDelete">{{ t('common.delete') }}</NButton>
     </div>
   </div>

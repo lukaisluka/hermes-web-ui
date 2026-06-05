@@ -60,6 +60,7 @@ export interface Job {
     thread_id: string | null
   } | null
   last_delivery_error: string | null
+  profile?: string
 }
 
 export interface CreateJobRequest {
@@ -94,6 +95,12 @@ export interface JobFormValues {
 
 function unwrap(res: { job: Job }): Job {
   return res.job
+}
+
+function withProfile(path: string, profile?: string): string {
+  if (!profile) return path
+  const separator = path.includes('?') ? '&' : '?'
+  return `${path}${separator}profile=${encodeURIComponent(profile)}`
 }
 
 function isScheduleObject(schedule: JobSchedule | null | undefined): schedule is Exclude<JobSchedule, string> {
@@ -151,8 +158,8 @@ export async function listJobs(): Promise<Job[]> {
   return res.jobs
 }
 
-export async function getJob(jobId: string): Promise<Job> {
-  return unwrap(await request<{ job: Job }>(`/api/hermes/jobs/${jobId}`))
+export async function getJob(jobId: string, profile?: string): Promise<Job> {
+  return unwrap(await request<{ job: Job }>(withProfile(`/api/hermes/jobs/${jobId}`, profile)))
 }
 
 export async function createJob(data: CreateJobRequest): Promise<Job> {
@@ -162,27 +169,27 @@ export async function createJob(data: CreateJobRequest): Promise<Job> {
   }))
 }
 
-export async function updateJob(jobId: string, data: UpdateJobRequest): Promise<Job> {
-  return unwrap(await request<{ job: Job }>(`/api/hermes/jobs/${jobId}`, {
+export async function updateJob(jobId: string, data: UpdateJobRequest, profile?: string): Promise<Job> {
+  return unwrap(await request<{ job: Job }>(withProfile(`/api/hermes/jobs/${jobId}`, profile), {
     method: 'PATCH',
     body: JSON.stringify(data),
   }))
 }
 
-export async function deleteJob(jobId: string): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>(`/api/hermes/jobs/${jobId}`, {
+export async function deleteJob(jobId: string, profile?: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(withProfile(`/api/hermes/jobs/${jobId}`, profile), {
     method: 'DELETE',
   })
 }
 
-export async function pauseJob(jobId: string): Promise<Job> {
-  return unwrap(await request<{ job: Job }>(`/api/hermes/jobs/${jobId}/pause`, { method: 'POST' }))
+export async function pauseJob(jobId: string, profile?: string): Promise<Job> {
+  return unwrap(await request<{ job: Job }>(withProfile(`/api/hermes/jobs/${jobId}/pause`, profile), { method: 'POST' }))
 }
 
-export async function resumeJob(jobId: string): Promise<Job> {
-  return unwrap(await request<{ job: Job }>(`/api/hermes/jobs/${jobId}/resume`, { method: 'POST' }))
+export async function resumeJob(jobId: string, profile?: string): Promise<Job> {
+  return unwrap(await request<{ job: Job }>(withProfile(`/api/hermes/jobs/${jobId}/resume`, profile), { method: 'POST' }))
 }
 
-export async function runJob(jobId: string): Promise<Job> {
-  return unwrap(await request<{ job: Job }>(`/api/hermes/jobs/${jobId}/run`, { method: 'POST' }))
+export async function runJob(jobId: string, profile?: string): Promise<Job> {
+  return unwrap(await request<{ job: Job }>(withProfile(`/api/hermes/jobs/${jobId}/run`, profile), { method: 'POST' }))
 }

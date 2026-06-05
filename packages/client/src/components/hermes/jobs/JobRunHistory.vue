@@ -26,7 +26,7 @@ const filteredRuns = computed(() => {
 async function fetchRuns() {
   loading.value = true
   try {
-    runs.value = await listCronRuns(props.selectedJobId ?? undefined)
+    runs.value = await listCronRuns(props.selectedJobId ?? undefined, props.profileKey)
   } catch (err) {
     console.error('Failed to fetch cron runs:', err)
     runs.value = []
@@ -47,7 +47,7 @@ async function handleExpand(key: string | number | Array<string | number>) {
 
     loadingContent.value[k] = true
     try {
-      const detail: RunDetail = await readCronRun(run.jobId, run.fileName)
+      const detail: RunDetail = await readCronRun(run.jobId, run.fileName, props.profileKey)
       expandedContent.value[k] = detail.content
     } catch (err) {
       expandedContent.value[k] = `[Error loading content]`
@@ -64,7 +64,7 @@ function formatSize(bytes: number): string {
 }
 
 function getJobName(jobId: string): string {
-  return props.jobNameMap[jobId] || jobId
+  return props.jobNameMap[`${props.profileKey}::${jobId}`] || jobId
 }
 
 watch(() => [props.selectedJobId, props.profileKey], () => {

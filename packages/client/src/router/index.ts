@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { hasApiKey, isStoredSuperAdmin } from '@/api/client'
+import { hasApiKey, isStoredProfileAdmin, isStoredSuperAdmin } from '@/api/client'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -44,6 +44,7 @@ const router = createRouter({
       path: '/hermes/models',
       name: 'hermes.models',
       component: () => import('@/views/hermes/ModelsView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/profiles',
@@ -55,6 +56,7 @@ const router = createRouter({
       path: '/hermes/logs',
       name: 'hermes.logs',
       component: () => import('@/views/hermes/LogsView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/usage',
@@ -76,16 +78,19 @@ const router = createRouter({
       path: '/hermes/skills',
       name: 'hermes.skills',
       component: () => import('@/views/hermes/SkillsView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/plugins',
       name: 'hermes.plugins',
       component: () => import('@/views/hermes/PluginsView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/memory',
       name: 'hermes.memory',
       component: () => import('@/views/hermes/MemoryView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/settings',
@@ -96,11 +101,13 @@ const router = createRouter({
       path: '/hermes/channels',
       name: 'hermes.channels',
       component: () => import('@/views/hermes/ChannelsView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/terminal',
       name: 'hermes.terminal',
       component: () => import('@/views/hermes/TerminalView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/group-chat',
@@ -121,6 +128,7 @@ const router = createRouter({
       path: '/hermes/coding-agents',
       name: 'hermes.codingAgents',
       component: () => import('@/views/hermes/CodingAgentsView.vue'),
+      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/version-preview',
@@ -156,6 +164,11 @@ router.beforeEach((to, _from, next) => {
   }
 
   if (to.meta.requiresSuperAdmin && !isStoredSuperAdmin()) {
+    next({ name: 'hermes.chat' })
+    return
+  }
+
+  if (to.meta.requiresProfileAdmin && !isStoredProfileAdmin()) {
     next({ name: 'hermes.chat' })
     return
   }

@@ -12,7 +12,8 @@ import { copyToClipboard } from '@/utils/clipboard'
 import HistoryMessageList from '@/components/hermes/chat/HistoryMessageList.vue'
 import SessionListItem from '@/components/hermes/chat/SessionListItem.vue'
 import OutlinePanel from '@/components/hermes/chat/OutlinePanel.vue'
-import { batchDeleteSessions, deleteSession, fetchHermesSessions, fetchHermesSession, fetchSessionMessagesPage, importHermesSession, type HermesMessage, type SessionSummary } from '@/api/hermes/sessions'
+import { batchDeleteSessions, deleteSession, fetchHermesSessions, fetchHermesSession, fetchSessionMessagesPage, fetchSessions, importHermesSession, type HermesMessage, type SessionSummary } from '@/api/hermes/sessions'
+import { getStoredUserRole } from '@/api/client'
 
 const appStore = useAppStore()
 const profilesStore = useProfilesStore()
@@ -21,6 +22,7 @@ const message = useMessage()
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const isRegularUser = getStoredUserRole() === 'user'
 
 const routeSessionId = computed(() => {
   const value = route.params.sessionId
@@ -63,7 +65,9 @@ async function loadHermesSessions() {
   const requestId = ++hermesSessionsRequestId
   hermesSessionsLoading.value = true
   try {
-    const sessions = await fetchHermesSessions(undefined, undefined, effectiveHistoryProfile.value)
+    const sessions = isRegularUser
+      ? await fetchSessions()
+      : await fetchHermesSessions(undefined, undefined, effectiveHistoryProfile.value)
     if (requestId !== hermesSessionsRequestId) return
     hermesSessions.value = sessions
     hermesSessionsLoaded.value = true
@@ -97,11 +101,11 @@ const contextSessionPinned = computed(() =>
 
 const contextMenuOptions = computed<DropdownOption[]>(() => {
   const options: DropdownOption[] = [
-    {
+    ...(!isRegularUser ? [{
       label: t('chat.importToWebUi'),
       key: 'import-webui',
       disabled: Boolean(contextSessionSummary.value?.webui_imported),
-    },
+    }] : []),
     { label: t(contextSessionPinned.value ? 'chat.unpin' : 'chat.pin'), key: 'pin' },
     { label: t('chat.copySessionLink'), key: 'copy-link' },
     { label: t('chat.copySessionId'), key: 'copy-id' },
@@ -175,7 +179,7 @@ async function loadHistorySession(sessionId: string, profile?: string | null) {
   } else {
     // Some imported/legacy Hermes sessions may only exist in Hermes state.db.
     // Keep the old full-detail path as a compatibility fallback.
-    const sessionDetail = await fetchHermesSession(sessionId, sessionProfile)
+    const sessionDetail = isRegularUser ? null : await fetchHermesSession(sessionId, sessionProfile)
     if (!sessionDetail) {
       message.error(t('chat.sessionNotFound'))
       return
@@ -554,6 +558,7 @@ function handleClickOutside() {
 }
 
 async function handleImportToWebUi(sessionId: string) {
+  if (isRegularUser) return
   const summary = findHistorySession(sessionId)
   try {
     const result = await importHermesSession(sessionId, summary?.profile || null)

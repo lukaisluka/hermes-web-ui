@@ -9,6 +9,8 @@ import { useChatStore, type Session } from '@/stores/hermes/chat'
 import { useProfilesStore } from '@/stores/hermes/profiles'
 import { useSettingsStore } from '@/stores/hermes/settings'
 
+const profileAdminState = vi.hoisted(() => ({ value: true }))
+
 vi.mock('@/components/hermes/chat/ChatPanel.vue', () => ({
   default: { template: '<div data-testid="chat-panel" />' },
 }))
@@ -46,6 +48,7 @@ vi.mock('@/api/hermes/sessions', () => ({
 
 vi.mock('@/api/client', () => ({
   getActiveProfileName: () => 'default',
+  isStoredProfileAdmin: () => profileAdminState.value,
 }))
 
 vi.mock('@/api/hermes/download', () => ({
@@ -76,6 +79,7 @@ function makeSession(title: string): Session {
 describe('ChatView tab title', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    profileAdminState.value = true
     document.title = 'Hermes Studio'
     setActivePinia(createPinia())
 
@@ -113,6 +117,17 @@ describe('ChatView tab title', () => {
     const wrapper = mount(ChatView)
 
     expect(document.title).toBe('Hermes Studio')
+    wrapper.unmount()
+  })
+
+  it('does not load protected settings for regular users', async () => {
+    profileAdminState.value = false
+    const settingsStore = useSettingsStore()
+
+    const wrapper = mount(ChatView)
+    await Promise.resolve()
+
+    expect(settingsStore.fetchSettings).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })

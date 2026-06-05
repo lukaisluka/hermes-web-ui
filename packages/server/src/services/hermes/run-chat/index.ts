@@ -21,7 +21,7 @@ import { getOrCreateSession } from './compression'
 import { handleSessionCommand, isSessionCommand, parseSessionCommand } from './session-command'
 import { contentBlocksToString } from './content-blocks'
 import type { ContentBlock, QueuedRun, SessionState } from './types'
-import { authenticateUserToken, isAuthEnabled, type AuthenticatedUser } from '../../../middleware/user-auth'
+import { authenticateUserToken, isAuthEnabled, isRegularUser, isSuperAdmin, type AuthenticatedUser } from '../../../middleware/user-auth'
 import { userCanAccessProfile } from '../../../db/hermes/users-store'
 
 export type { ContentBlock } from './types'
@@ -83,6 +83,16 @@ export class ChatRunSocket {
     }
     const resolveRunProfile = (sessionId?: string, requested?: string) => {
       const requestedProfile = typeof requested === 'string' ? requested.trim() : ''
+      const storedSession = sessionId ? getSession(sessionId) : null
+      if (sessionId && storedSession && socketUser && isRegularUser(socketUser)) {
+        if (String(storedSession.user_id || '') !== String(socketUser.id)) {
+          throw new Error('Session is not available for this user')
+        }
+        const storedProfile = storedSession.profile || 'default'
+        if (!this.canAccessProfile(socketUser, storedProfile)) {
+          throw new Error(`Profile "${storedProfile}" is not available for this user`)
+        }
+      }
       if (requestedProfile) {
         if (!profileExists(requestedProfile)) throw new Error(`Profile "${requestedProfile}" does not exist`)
         if (socketUser && !this.canAccessProfile(socketUser, requestedProfile)) {
@@ -97,12 +107,19 @@ export class ChatRunSocket {
         }
         return profile
       }
-      const storedProfile = getSession(sessionId)?.profile || ''
+      const storedProfile = storedSession?.profile || ''
       const profile = storedProfile && profileExists(storedProfile) ? storedProfile : currentProfile()
       if (socketUser && !this.canAccessProfile(socketUser, profile)) {
         throw new Error(`Profile "${profile}" is not available for this user`)
       }
       return profile
+    }
+    const ensureExistingSessionAccess = (sessionId?: string) => {
+      if (!sessionId || !socketUser || !isRegularUser(socketUser)) return true
+      const session = getSession(sessionId)
+      return !!session &&
+        String(session.user_id || '') === String(socketUser.id) &&
+        this.canAccessProfile(socketUser, session.profile || 'default')
     }
 
     socket.on('run', async (data: {
@@ -147,6 +164,7 @@ export class ChatRunSocket {
               model_groups: data.model_groups,
               instructions: data.instructions,
               queueId: data.queue_id,
+              userId: this.ownerIdForSocket(socket),
               runQueuedItem: this.runQueuedItem.bind(this),
             })
           } catch (err) {
@@ -207,6 +225,7 @@ export class ChatRunSocket {
 
     socket.on('cancel_queued_run', (data: { session_id?: string; queue_id?: string }) => {
       if (!data.session_id || !data.queue_id) return
+      if (!ensureExistingSessionAccess(data.session_id)) return
       const state = this.sessionMap.get(data.session_id)
       if (!state?.queue.length) return
       const before = state.queue.length
@@ -225,18 +244,24 @@ export class ChatRunSocket {
     socket.on('resume', async (data: { session_id?: string }) => {
       if (!data.session_id) return
       const sid = data.session_id
+      if (!ensureExistingSessionAccess(sid)) {
+        socket.emit('run.failed', { event: 'run.failed', session_id: sid, error: 'Session is not available for this user' })
+        return
+      }
       socket.join(`session:${sid}`)
       await this.resumeSession(socket, sid)
     })
 
     socket.on('abort', (data: { session_id?: string }) => {
       if (data.session_id) {
+        if (!ensureExistingSessionAccess(data.session_id)) return
         void handleAbort(this.nsp, socket, data.session_id, this.sessionMap, this.bridge, this.runQueuedItem.bind(this))
       }
     })
 
     socket.on('approval.respond', async (data: { session_id?: string; approval_id?: string; choice?: string }) => {
       if (!data.session_id || !data.approval_id) return
+      if (!ensureExistingSessionAccess(data.session_id)) return
       try {
         const result = await this.bridge.approvalRespond(data.approval_id, data.choice || 'deny')
         this.emitToSession(socket, data.session_id, 'approval.resolved', {
@@ -258,6 +283,7 @@ export class ChatRunSocket {
 
     socket.on('clarify.respond', async (data: { session_id?: string; clarify_id?: string; response?: string }) => {
       if (!data.session_id || !data.clarify_id) return
+      if (!ensureExistingSessionAccess(data.session_id)) return
       this.clearClarifyEventState(data.session_id, data.clarify_id)
       try {
         const result = await this.bridge.clarifyRespond(data.clarify_id, data.response || '')
@@ -319,6 +345,7 @@ export class ChatRunSocket {
         skipUserMessage,
         loadSessionStateFromDb,
         this.dequeueNextQueuedRun.bind(this),
+        this.ownerIdForSocket(socket),
       )
       return
     }
@@ -328,6 +355,7 @@ export class ChatRunSocket {
       this.sessionMap,
       skipUserMessage,
       this.dequeueNextQueuedRun.bind(this),
+      this.ownerIdForSocket(socket),
     )
   }
 
@@ -433,6 +461,24 @@ export class ChatRunSocket {
 
   private runQueuedItem(socket: Socket, sessionId: string, next: QueuedRun, fallbackProfile = 'default') {
     const skipUserMessage = next.displayInput === null
+    const profile = next.profile || fallbackProfile
+    const user = socket.data.user as AuthenticatedUser | undefined
+    if (user) {
+      const session = getSession(sessionId)
+      const sessionDenied = isRegularUser(user) && (
+        !session ||
+        String(session.user_id || '') !== String(user.id) ||
+        !this.canAccessProfile(user, session.profile || 'default')
+      )
+      if (sessionDenied || !this.canAccessProfile(user, profile)) {
+        socket.emit('run.failed', {
+          event: 'run.failed',
+          session_id: sessionId,
+          error: 'Session is not available for this user',
+        })
+        return
+      }
+    }
     void this.handleRun(socket, {
       input: next.input,
       display_input: next.displayInput,
@@ -446,7 +492,7 @@ export class ChatRunSocket {
       source: next.source,
       queue_id: next.queue_id,
       peerExcludeSocketId: next.originSocketId,
-    }, next.profile || fallbackProfile, skipUserMessage)
+    }, profile, skipUserMessage)
   }
 
   // --- Helpers ---
@@ -483,7 +529,12 @@ export class ChatRunSocket {
   }
 
   private canAccessProfile(user: AuthenticatedUser, profile: string): boolean {
-    return user.role === 'super_admin' || userCanAccessProfile(user.id, profile)
+    return isSuperAdmin(user) || userCanAccessProfile(user.id, profile)
+  }
+
+  private ownerIdForSocket(socket: Socket): string | null {
+    const user = socket.data.user as AuthenticatedUser | undefined
+    return user && isRegularUser(user) ? String(user.id) : null
   }
 
   /** Close all active upstream response streams */

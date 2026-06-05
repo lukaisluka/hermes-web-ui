@@ -9,6 +9,7 @@ import { readAppConfig, writeAppConfig, type ModelVisibilityRule } from '../../s
 import { getDb } from '../../db'
 import { MODEL_CONTEXT_TABLE } from '../../db/hermes/schemas'
 import { listUserProfiles } from '../../db/hermes/users-store'
+import { isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
 import {
   getCachedProviderModels,
   readProviderModelCatalogCache,
@@ -23,6 +24,21 @@ type ModelMeta = { preview?: boolean; disabled?: boolean; alias?: string }
 type AvailableGroup = { provider: string; label: string; base_url: string; models: string[]; api_key: string; builtin?: boolean; model_meta?: Record<string, ModelMeta>; available_models?: string[]; base_url_env?: string }
 type ModelVisibility = Record<string, ModelVisibilityRule>
 type CustomModels = Record<string, string[]>
+type AvailableResponse = {
+  default: string
+  default_provider: string
+  groups: AvailableGroup[]
+  allProviders?: AvailableGroup[]
+  model_aliases?: Record<string, Record<string, string>>
+  model_visibility?: ModelVisibility
+  custom_models?: CustomModels
+  profiles?: Array<{
+    profile: string
+    default: string
+    default_provider: string
+    groups: AvailableGroup[]
+  }>
+}
 
 const RESERVED_ALIAS_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
 
@@ -235,6 +251,28 @@ function mergeAvailableGroups(groups: AvailableGroup[]): AvailableGroup[] {
   return [...byProvider.values()]
 }
 
+function redactModelGroup(group: AvailableGroup): AvailableGroup {
+  return { ...group, api_key: '' }
+}
+
+function sanitizeAvailableResponse(ctx: any, body: AvailableResponse): AvailableResponse {
+  if (!isRegularUser(ctx.state?.user)) return body
+  return {
+    default: body.default,
+    default_provider: body.default_provider,
+    groups: body.groups.map(redactModelGroup),
+    allProviders: body.allProviders?.map(redactModelGroup),
+    profiles: body.profiles?.map(profile => ({
+      ...profile,
+      groups: profile.groups.map(redactModelGroup),
+    })),
+  }
+}
+
+function setAvailableBody(ctx: any, body: AvailableResponse): void {
+  ctx.body = sanitizeAvailableResponse(ctx, body)
+}
+
 type ProviderFetchCache = Map<string, Promise<string[]>>
 
 function requestedProfileName(ctx: any): string {
@@ -257,7 +295,7 @@ function requestScopedProfileName(ctx: any): string {
 function visibleProfileNamesForUser(ctx: any): string[] {
   const diskProfiles = listProfileNamesFromDisk()
   const user = ctx.state?.user
-  if (!user || user.role === 'super_admin') return diskProfiles
+  if (!user || isSuperAdmin(user)) return diskProfiles
   const allowed = new Set(listUserProfiles(user.id).map(profile => profile.profile_name))
   return diskProfiles.filter(profile => allowed.has(profile))
 }
@@ -447,7 +485,7 @@ export async function getAvailable(ctx: any) {
         p,
         getCachedProviderModels(modelCatalogCache, p.value, p.base_url, p.value === 'openrouter') || p.models,
       ))
-      ctx.body = {
+      setAvailableBody(ctx, {
         default: visibleDefault.defaultModel,
         default_provider: visibleDefault.defaultProvider,
         groups: visibleGroups,
@@ -461,7 +499,7 @@ export async function getAvailable(ctx: any) {
           default_provider: result.default_provider,
           groups: applyModelVisibility(applyModelAliases(result.groups, modelAliases), modelVisibility),
         })),
-      }
+      })
       return
     }
 
@@ -474,7 +512,7 @@ export async function getAvailable(ctx: any) {
     const profileGroupsWithAliases = applyModelAliases(profileResult.groups, modelAliasesForProfile)
     const visibleProfileGroups = applyModelVisibility(profileGroupsWithAliases, modelVisibilityForProfile)
     const visibleProfileDefault = resolveVisibleDefault(profileResult.default, profileResult.default_provider, visibleProfileGroups)
-    ctx.body = {
+    setAvailableBody(ctx, {
       default: visibleProfileDefault.defaultModel,
       default_provider: visibleProfileDefault.defaultProvider,
       groups: visibleProfileGroups,
@@ -491,7 +529,7 @@ export async function getAvailable(ctx: any) {
         default_provider: profileResult.default_provider,
         groups: visibleProfileGroups,
       }],
-    }
+    })
     return
 
     const config = await readConfigYaml()
@@ -694,7 +732,7 @@ export async function getAvailable(ctx: any) {
       const fallbackGroupsWithAliases = applyModelAliases(fallbackGroups, modelAliases)
       const visibleFallbackGroups = applyModelVisibility(fallbackGroupsWithAliases, modelVisibility)
       const fallbackDefault = resolveVisibleDefault(fallback.default, currentDefaultProvider, visibleFallbackGroups)
-      ctx.body = {
+      setAvailableBody(ctx, {
         default: fallbackDefault.defaultModel,
         default_provider: fallbackDefault.defaultProvider,
         groups: visibleFallbackGroups,
@@ -702,11 +740,11 @@ export async function getAvailable(ctx: any) {
         model_aliases: modelAliases,
         model_visibility: modelVisibility,
         custom_models: customModels,
-      }
+      })
       return
     }
 
-    ctx.body = {
+    setAvailableBody(ctx, {
       default: visibleDefault.defaultModel,
       default_provider: visibleDefault.defaultProvider,
       groups: visibleGroups,
@@ -714,7 +752,7 @@ export async function getAvailable(ctx: any) {
       model_aliases: modelAliases,
       model_visibility: modelVisibility,
       custom_models: customModels,
-    }
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }

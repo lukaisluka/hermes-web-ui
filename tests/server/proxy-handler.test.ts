@@ -102,6 +102,65 @@ describe('Proxy Handler', () => {
     expect(url).not.toContain('/api/hermes')
   })
 
+  it('routes through the profile already validated by auth middleware', async () => {
+    const getUpstream = vi.fn(() => 'http://127.0.0.1:8642')
+    setGatewayManagerForTest({
+      getUpstream,
+      getApiKey: () => null,
+    })
+    mockFetch.mockResolvedValue({
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: null,
+      json: () => Promise.resolve({ ok: true }),
+    })
+
+    const ctx = createMockCtx({
+      path: '/v1/models',
+      state: { profile: { name: 'research' } },
+    })
+    await proxy(ctx)
+
+    expect(getUpstream).toHaveBeenCalledWith('research')
+  })
+
+  it('allows regular users to proxy only the versioned model catalog', async () => {
+    mockFetch.mockResolvedValue({
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: null,
+      json: () => Promise.resolve({ ok: true }),
+    })
+    const user = { id: 7, role: 'user' }
+
+    const blockedCtx = createMockCtx({
+      path: '/api/hermes/config/private',
+      state: { user, profile: { name: 'research' } },
+    })
+    await proxy(blockedCtx)
+    expect(blockedCtx.status).toBe(403)
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    const allowedCtx = createMockCtx({
+      path: '/v1/models',
+      state: { user, profile: { name: 'research' } },
+    })
+    await proxy(allowedCtx)
+    expect(mockFetch).toHaveBeenCalledOnce()
+
+    mockFetch.mockClear()
+    const runCtx = createMockCtx({
+      path: '/api/hermes/v1/runs',
+      method: 'POST',
+      req: { method: 'POST' },
+      request: { body: { session_id: 'foreign-session', input: 'hello' } },
+      state: { user, profile: { name: 'research' } },
+    })
+    await proxy(runCtx)
+    expect(runCtx.status).toBe(403)
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
   it('strips authorization header', async () => {
     mockFetch.mockResolvedValue({
       status: 200,

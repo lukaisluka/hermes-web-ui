@@ -2,7 +2,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'crypto'
 import { getDb } from '../index'
 import { USER_PROFILES_TABLE, USERS_TABLE } from './schemas'
 
-export type UserRole = 'super_admin' | 'admin'
+export type UserRole = 'super_admin' | 'admin' | 'user'
 export type UserStatus = 'active' | 'disabled'
 export type UserId = number | string
 
@@ -212,7 +212,7 @@ export function createUser(input: {
   const db = getDb()
   if (!db) return null
   const now = Date.now()
-  const role = input.role || 'admin'
+  const role = input.role || 'user'
   const status = input.status || 'active'
   db.prepare(
     `INSERT INTO ${USERS_TABLE} (username, password_hash, role, status, created_at, updated_at)

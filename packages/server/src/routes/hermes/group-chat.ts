@@ -1,6 +1,7 @@
 import Router from '@koa/router'
 import type { GroupChatServer } from '../../services/hermes/group-chat'
 import { isReservedMentionName } from '../../services/hermes/group-chat/mention-routing'
+import { isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
 
 export const groupChatRoutes = new Router()
 
@@ -28,6 +29,53 @@ function generateInviteCode(): string {
 }
 
 type AgentInput = { profile: string; name?: string; description?: string; invited?: boolean | number }
+
+function currentScopeProfile(ctx: any): string {
+    return ctx.state?.profile?.name ||
+        String(ctx.get?.('x-hermes-profile') || '').trim() ||
+        (typeof ctx.query?.profile === 'string' ? ctx.query.profile.trim() : '') ||
+        'default'
+}
+
+function allowedProfiles(ctx: any): Set<string> {
+    return new Set((ctx.state?.user?.profiles || []).map((profile: string) => profile.trim()).filter(Boolean))
+}
+
+function rejectUnauthorizedProfiles(ctx: any, profiles: string[]): boolean {
+    if (!isRegularUser(ctx.state?.user)) return false
+    const allowed = allowedProfiles(ctx)
+    const denied = profiles.find(profile => !allowed.has(profile))
+    if (!denied) return false
+    ctx.status = 403
+    ctx.body = { error: `Profile "${denied}" is not available for this user` }
+    return true
+}
+
+function roomAccessError(ctx: any, storage: any, room: any | undefined): string | null {
+    if (!isRegularUser(ctx.state?.user)) return null
+    if (!room) return 'Room not found'
+    const allowed = allowedProfiles(ctx)
+    const agents = typeof storage.getRoomAgents === 'function'
+        ? storage.getRoomAgents(room.id) as Array<{ profile: string }>
+        : []
+    if (room.profile && !allowed.has(room.profile)) {
+        return 'Room is not available for this user'
+    }
+    if (!room.profile && agents.length === 0) {
+        return 'Room is not available for this user'
+    }
+    const deniedAgent = agents.find(agent => !allowed.has(agent.profile))
+    if (deniedAgent) return 'Room is not available for this user'
+    return null
+}
+
+function rejectRoomAccess(ctx: any, storage: any, room: any | undefined): boolean {
+    const error = roomAccessError(ctx, storage, room)
+    if (!error) return false
+    ctx.status = error === 'Room not found' ? 404 : 403
+    ctx.body = { error }
+    return true
+}
 
 function sanitizeAgentConnectReason(reason?: string): string {
     return (reason || 'agent runtime connection failed')
@@ -93,10 +141,12 @@ groupChatRoutes.post('/api/hermes/group-chat/rooms', async (ctx) => {
         ctx.body = { error: '`all` is reserved for @all mentions' }
         return
     }
+    const scopeProfile = currentScopeProfile(ctx)
+    if (rejectUnauthorizedProfiles(ctx, [scopeProfile, ...(agents || []).map(agent => agent.profile)])) return
 
     const roomId = generateId()
     const storage = chatServer.getStorage()
-    storage.saveRoom(roomId, name, inviteCode, compression)
+    storage.saveRoom(roomId, name, inviteCode, compression, scopeProfile)
 
     const addedAgents = []
     const agentResults = []
@@ -134,16 +184,17 @@ groupChatRoutes.post('/api/hermes/group-chat/rooms/:roomId/clone', async (ctx) =
         ctx.body = { error: 'Room not found' }
         return
     }
+    const storage = chatServer.getStorage()
+    if (rejectRoomAccess(ctx, storage, sourceRoom)) return
 
     const { name, inviteCode } = ctx.request.body as { name?: string; inviteCode?: string }
     const roomId = generateId()
-    const storage = chatServer.getStorage()
     const code = inviteCode?.trim() || generateInviteCode()
     storage.saveRoom(roomId, name?.trim() || `${sourceRoom.name} Copy`, code, {
         triggerTokens: sourceRoom.triggerTokens,
         maxHistoryTokens: sourceRoom.maxHistoryTokens,
         tailMessageCount: sourceRoom.tailMessageCount,
-    })
+    }, sourceRoom.profile || currentScopeProfile(ctx))
 
     const addedAgents = []
     const agentResults = []
@@ -181,6 +232,7 @@ groupChatRoutes.get('/api/hermes/group-chat/rooms/:roomId', async (ctx) => {
         ctx.body = { error: 'Room not found' }
         return
     }
+    if (rejectRoomAccess(ctx, chatServer.getStorage(), room)) return
 
     const offset = ctx.query.offset ? Math.max(0, parseInt(ctx.query.offset as string, 10) || 0) : 0
     const limit = ctx.query.limit ? Math.max(1, parseInt(ctx.query.limit as string, 10) || 300) : 300
@@ -201,10 +253,13 @@ groupChatRoutes.get('/api/hermes/group-chat/rooms', async (ctx) => {
 
     const user = ctx.state.user
     const storage = chatServer.getStorage()
-    const rooms = !user || user.role === 'super_admin'
+    const rooms = !user || isSuperAdmin(user)
         ? storage.getAllRooms()
         : storage.getRoomsForProfiles(user.profiles || [])
-    ctx.body = { rooms }
+    const visibleRooms = isRegularUser(user)
+        ? rooms.filter(room => !roomAccessError(ctx, storage, room))
+        : rooms
+    ctx.body = { rooms: visibleRooms }
 })
 
 // Get room by invite code
@@ -221,6 +276,7 @@ groupChatRoutes.get('/api/hermes/group-chat/rooms/join/:code', async (ctx) => {
         ctx.body = { error: 'Room not found' }
         return
     }
+    if (rejectRoomAccess(ctx, chatServer.getStorage(), room)) return
 
     ctx.body = { room }
 })
@@ -240,7 +296,16 @@ groupChatRoutes.put('/api/hermes/group-chat/rooms/:roomId/invite-code', async (c
         return
     }
 
-    chatServer.getStorage().updateRoomInviteCode(ctx.params.roomId, inviteCode)
+    const storage = chatServer.getStorage()
+    const room = storage.getRoom(ctx.params.roomId)
+    if (!room) {
+        ctx.status = 404
+        ctx.body = { error: 'Room not found' }
+        return
+    }
+    if (rejectRoomAccess(ctx, storage, room)) return
+
+    storage.updateRoomInviteCode(ctx.params.roomId, inviteCode)
     ctx.body = { success: true }
 })
 
@@ -263,9 +328,18 @@ groupChatRoutes.post('/api/hermes/group-chat/rooms/:roomId/agents', async (ctx) 
         ctx.body = { error: '`all` is reserved for @all mentions' }
         return
     }
+    const storage = chatServer.getStorage()
+    const room = storage.getRoom(ctx.params.roomId)
+    if (!room) {
+        ctx.status = 404
+        ctx.body = { error: 'Room not found' }
+        return
+    }
+    if (rejectRoomAccess(ctx, storage, room)) return
+    if (rejectUnauthorizedProfiles(ctx, [profile])) return
 
     // Prevent duplicate agent in same room
-    const existing = chatServer.getStorage().getRoomAgents(ctx.params.roomId)
+    const existing = storage.getRoomAgents(ctx.params.roomId)
     if (existing.find(a => a.profile === profile)) {
         ctx.status = 409
         ctx.body = { error: 'Agent already in room' }
@@ -295,7 +369,15 @@ groupChatRoutes.get('/api/hermes/group-chat/rooms/:roomId/agents', async (ctx) =
         return
     }
 
-    const agents = chatServer.getStorage().getRoomAgents(ctx.params.roomId)
+    const storage = chatServer.getStorage()
+    const room = storage.getRoom(ctx.params.roomId)
+    if (!room) {
+        ctx.status = 404
+        ctx.body = { error: 'Room not found' }
+        return
+    }
+    if (rejectRoomAccess(ctx, storage, room)) return
+    const agents = storage.getRoomAgents(ctx.params.roomId)
     ctx.body = { agents }
 })
 
@@ -310,6 +392,13 @@ groupChatRoutes.delete('/api/hermes/group-chat/rooms/:roomId/agents/:agentId', a
     const roomId = ctx.params.roomId
     const requestedAgentId = ctx.params.agentId
     const storage = chatServer.getStorage()
+    const room = storage.getRoom(roomId)
+    if (!room) {
+        ctx.status = 404
+        ctx.body = { error: 'Room not found' }
+        return
+    }
+    if (rejectRoomAccess(ctx, storage, room)) return
     const agent = storage.getRoomAgent(roomId, requestedAgentId)
     if (!agent) {
         ctx.status = 404
@@ -336,10 +425,18 @@ groupChatRoutes.delete('/api/hermes/group-chat/rooms/:roomId', async (ctx) => {
     }
 
     const roomId = ctx.params.roomId
+    const storage = chatServer.getStorage()
+    const room = storage.getRoom(roomId)
+    if (!room) {
+        ctx.status = 404
+        ctx.body = { error: 'Room not found' }
+        return
+    }
+    if (rejectRoomAccess(ctx, storage, room)) return
     // Disconnect all agents in room
     chatServer.agentClients.disconnectRoom(roomId)
     // Delete all data
-    chatServer.getStorage().deleteRoom(roomId)
+    storage.deleteRoom(roomId)
     ctx.body = { success: true }
 })
 
@@ -352,15 +449,18 @@ groupChatRoutes.post('/api/hermes/group-chat/rooms/:roomId/clear-context', async
     }
 
     const roomId = ctx.params.roomId
-    if (!chatServer.getStorage().getRoom(roomId)) {
+    const storage = chatServer.getStorage()
+    const room = storage.getRoom(roomId)
+    if (!room) {
         ctx.status = 404
         ctx.body = { error: 'Room not found' }
         return
     }
+    if (rejectRoomAccess(ctx, storage, room)) return
 
-    chatServer.getStorage().clearRoomContext(roomId)
+    storage.clearRoomContext(roomId)
     chatServer.clearRoomRuntimeState(roomId)
-    ctx.body = { success: true, room: chatServer.getStorage().getRoom(roomId) }
+    ctx.body = { success: true, room: storage.getRoom(roomId) }
 })
 
 // Update room compression config
@@ -378,9 +478,16 @@ groupChatRoutes.put('/api/hermes/group-chat/rooms/:roomId/config', async (ctx) =
         tailMessageCount?: number
     }
 
-    chatServer.getStorage().updateRoomConfig(roomId, { triggerTokens, maxHistoryTokens, tailMessageCount })
-    const room = chatServer.getStorage().getRoom(roomId)
-    ctx.body = { room }
+    const storage = chatServer.getStorage()
+    const room = storage.getRoom(roomId)
+    if (!room) {
+        ctx.status = 404
+        ctx.body = { error: 'Room not found' }
+        return
+    }
+    if (rejectRoomAccess(ctx, storage, room)) return
+    storage.updateRoomConfig(roomId, { triggerTokens, maxHistoryTokens, tailMessageCount })
+    ctx.body = { room: storage.getRoom(roomId) }
 })
 
 // Force compress a room's context
@@ -392,11 +499,14 @@ groupChatRoutes.post('/api/hermes/group-chat/rooms/:roomId/compress', async (ctx
     }
 
     const roomId = ctx.params.roomId
-    if (!chatServer.getStorage().getRoom(roomId)) {
+    const storage = chatServer.getStorage()
+    const room = storage.getRoom(roomId)
+    if (!room) {
         ctx.status = 404
         ctx.body = { error: 'Room not found' }
         return
     }
+    if (rejectRoomAccess(ctx, storage, room)) return
 
     const engine = chatServer.getContextEngine()
     if (!engine) {

@@ -12,10 +12,12 @@ import {
 } from '@/api/hermes/profiles'
 import ProfileAvatarView from '@/components/hermes/profiles/ProfileAvatar.vue'
 import { useI18n } from 'vue-i18n'
+import { isStoredProfileAdmin } from '@/api/client'
 
 const { t } = useI18n()
 const message = useMessage()
 const profilesStore = useProfilesStore()
+const canManageProfiles = computed(() => isStoredProfileAdmin())
 
 const activeName = computed(() => profilesStore.activeProfileName ?? '')
 const displayName = computed(() => activeName.value || 'default')
@@ -55,6 +57,7 @@ async function loadRuntimeStatuses(options: { background?: boolean } = {}): Prom
 
 function openProfileModal() {
   showProfileModal.value = true
+  if (!canManageProfiles.value) return
   void loadRuntimeStatuses().then((refreshing) => {
     if (refreshing) scheduleRuntimeStatusPoll()
   })
@@ -241,7 +244,7 @@ onMounted(() => {
                   <span class="profile-runtime-name">{{ profile.name }}</span>
                   <span v-if="profile.name === displayName" class="active-badge">{{ t('profiles.runtime.activeTag') }}</span>
                 </div>
-                <div class="runtime-status-grid">
+                <div v-if="canManageProfiles" class="runtime-status-grid">
                   <div class="runtime-row compact">
                     <span class="runtime-label">{{ t('profiles.runtime.bridgeWorker') }}</span>
                     <span class="runtime-value" :class="{ running: statusByProfile.get(profile.name)?.bridge.running }">
@@ -267,6 +270,7 @@ onMounted(() => {
             </div>
             <div class="profile-runtime-actions">
               <NButton
+                v-if="canManageProfiles"
                 size="small"
                 type="primary"
                 @click="openAvatarModal(profile)"
@@ -274,6 +278,7 @@ onMounted(() => {
                 {{ t('profiles.avatar.customize') }}
               </NButton>
               <NButton
+                v-if="canManageProfiles"
                 size="small"
                 type="primary"
                 :loading="gatewayRestarting[profile.name]"
@@ -282,6 +287,7 @@ onMounted(() => {
                 {{ t('profiles.runtime.restartGateway') }}
               </NButton>
               <NButton
+                v-if="canManageProfiles"
                 size="small"
                 type="primary"
                 :loading="profileRestarting[profile.name]"

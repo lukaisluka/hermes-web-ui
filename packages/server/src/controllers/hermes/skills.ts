@@ -10,10 +10,103 @@ import {
 import type { SkillSource } from '../../services/config-helpers'
 import { isPathWithin } from '../../services/hermes/hermes-path'
 import { getActiveProfileName, getProfileDir } from '../../services/hermes/hermes-profile'
-import { getSkillUsageStatsFromDb } from '../../db/hermes/sessions-db'
+import { getSkillUsageStatsFromDb, type HermesSkillUsageStats } from '../../db/hermes/sessions-db'
+import { listUserProfiles } from '../../db/hermes/users-store'
+import { isRegularUser } from '../../middleware/user-auth'
 
 function requestedProfile(ctx: any): string {
   return ctx.state?.profile?.name || getActiveProfileName() || 'default'
+}
+
+function explicitProfile(ctx: any): string {
+  return typeof ctx.query?.profile === 'string' ? ctx.query.profile.trim() : ''
+}
+
+function regularUserProfiles(ctx: any): string[] {
+  return isRegularUser(ctx.state?.user)
+    ? listUserProfiles(ctx.state.user.id).map(profile => profile.profile_name)
+    : []
+}
+
+function regularUserCanAccessProfile(ctx: any, profile: string): boolean {
+  return regularUserProfiles(ctx).includes(profile || 'default')
+}
+
+function emptySkillUsageStats(days: number): HermesSkillUsageStats {
+  return {
+    period_days: days,
+    summary: {
+      total_skill_loads: 0,
+      total_skill_edits: 0,
+      total_skill_actions: 0,
+      distinct_skills_used: 0,
+    },
+    by_day: [],
+    top_skills: [],
+  }
+}
+
+function mergeSkillUsageStats(days: number, stats: HermesSkillUsageStats[]): HermesSkillUsageStats {
+  const merged = emptySkillUsageStats(days)
+  const skillMap = new Map<string, { skill: string; view_count: number; manage_count: number; last_used_at: number | null }>()
+  const dayMap = new Map<string, { date: string; view_count: number; manage_count: number }>()
+  const daySkillMap = new Map<string, Map<string, { skill: string; view_count: number; manage_count: number }>>()
+
+  for (const stat of stats) {
+    merged.summary.total_skill_loads += stat.summary.total_skill_loads
+    merged.summary.total_skill_edits += stat.summary.total_skill_edits
+    for (const skill of stat.top_skills) {
+      const existing = skillMap.get(skill.skill) || { skill: skill.skill, view_count: 0, manage_count: 0, last_used_at: null }
+      existing.view_count += skill.view_count
+      existing.manage_count += skill.manage_count
+      if (skill.last_used_at != null && (existing.last_used_at == null || skill.last_used_at > existing.last_used_at)) {
+        existing.last_used_at = skill.last_used_at
+      }
+      skillMap.set(skill.skill, existing)
+    }
+    for (const day of stat.by_day) {
+      const existingDay = dayMap.get(day.date) || { date: day.date, view_count: 0, manage_count: 0 }
+      existingDay.view_count += day.view_count
+      existingDay.manage_count += day.manage_count
+      dayMap.set(day.date, existingDay)
+      const skillsForDay = daySkillMap.get(day.date) || new Map<string, { skill: string; view_count: number; manage_count: number }>()
+      for (const skill of day.skills) {
+        const existingSkill = skillsForDay.get(skill.skill) || { skill: skill.skill, view_count: 0, manage_count: 0 }
+        existingSkill.view_count += skill.view_count
+        existingSkill.manage_count += skill.manage_count
+        skillsForDay.set(skill.skill, existingSkill)
+      }
+      daySkillMap.set(day.date, skillsForDay)
+    }
+  }
+
+  merged.summary.total_skill_actions = merged.summary.total_skill_loads + merged.summary.total_skill_edits
+  merged.summary.distinct_skills_used = skillMap.size
+  merged.by_day = [...dayMap.values()]
+    .map(day => ({
+      ...day,
+      total_count: day.view_count + day.manage_count,
+      skills: [...(daySkillMap.get(day.date)?.values() || [])]
+        .map(skill => ({ ...skill, total_count: skill.view_count + skill.manage_count }))
+        .sort((a, b) => b.total_count - a.total_count || a.skill.localeCompare(b.skill)),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+  merged.top_skills = [...skillMap.values()]
+    .map(skill => ({
+      ...skill,
+      total_count: skill.view_count + skill.manage_count,
+      percentage: merged.summary.total_skill_actions > 0
+        ? (skill.view_count + skill.manage_count) / merged.summary.total_skill_actions * 100
+        : 0,
+    }))
+    .sort((a, b) =>
+      b.total_count - a.total_count ||
+      b.view_count - a.view_count ||
+      b.manage_count - a.manage_count ||
+      (b.last_used_at || 0) - (a.last_used_at || 0) ||
+      a.skill.localeCompare(b.skill),
+    )
+  return merged
 }
 
 function requestProfileDir(ctx: any): string {
@@ -480,6 +573,29 @@ export async function usageStats(ctx: any) {
   const days = Number.isFinite(rawDays) && rawDays > 0 ? Math.min(rawDays, 365) : 7
 
   try {
+    const profile = isRegularUser(ctx.state?.user) ? explicitProfile(ctx) : requestedProfile(ctx)
+    if (isRegularUser(ctx.state?.user) && profile && !regularUserCanAccessProfile(ctx, profile)) {
+      ctx.status = 403
+      ctx.body = { error: `Profile "${profile || 'default'}" is not available for this user` }
+      return
+    }
+    if (profile) {
+      ctx.body = await getSkillUsageStatsFromDb(days, undefined, profile)
+      return
+    }
+    if (isRegularUser(ctx.state?.user)) {
+      const stats: HermesSkillUsageStats[] = []
+      for (const allowedProfile of regularUserProfiles(ctx)) {
+        try {
+          stats.push(await getSkillUsageStatsFromDb(days, undefined, allowedProfile))
+        } catch {
+          // Missing or unreadable profile state DBs are skipped so one profile
+          // cannot hide usage from the rest of the authorized set.
+        }
+      }
+      ctx.body = mergeSkillUsageStats(days, stats)
+      return
+    }
     ctx.body = await getSkillUsageStatsFromDb(days, undefined, requestedProfile(ctx))
   } catch (err: any) {
     ctx.status = 500

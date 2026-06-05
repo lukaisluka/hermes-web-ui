@@ -12,6 +12,15 @@ vi.mock('../../packages/server/src/db/hermes/sessions-db', () => ({
   getSkillUsageStatsFromDb: vi.fn(),
 }))
 
+vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
+  listUserProfiles: vi.fn(() => []),
+}))
+
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isRegularUser: vi.fn(() => false),
+  isSuperAdmin: (user: any) => user?.role === 'super_admin',
+}))
+
 vi.mock('../../packages/server/src/db', () => ({
   getDb: vi.fn(),
 }))
