@@ -249,10 +249,8 @@ export async function resolveUserProfile(ctx: Context, next: Next): Promise<void
   }
 
   let profileName = resolveRequestedProfile(ctx)
-  let usedAuthorizedProfileFallback = false
   if (!profileName && isRegularUser(user)) {
     profileName = user.profiles?.[0] || ''
-    usedAuthorizedProfileFallback = !!profileName
     if (!profileName) {
       if (isProfileOptionalForRegularUser(ctx)) {
         await next()
@@ -268,7 +266,7 @@ export async function resolveUserProfile(ctx: Context, next: Next): Promise<void
     return
   }
 
-  if (!isSuperAdmin(user) && !usedAuthorizedProfileFallback && !userCanAccessProfile(user.id, profileName)) {
+  if (!isSuperAdmin(user) && !userCanAccessProfile(user.id, profileName)) {
     ctx.status = 403
     ctx.body = { error: `Profile "${profileName}" is not available for this user` }
     return

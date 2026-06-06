@@ -9,6 +9,7 @@ import {
   createUser,
   deleteUser,
   findUserById,
+  findUserSummaryById,
   findUserByUsername,
   getUserAvatar,
   listUsers,
@@ -461,7 +462,7 @@ export async function updateManagedUser(ctx: Context) {
     profiles: nextRole === 'super_admin' ? [] : profiles,
     defaultProfile: body.defaultProfile,
   })
-  ctx.body = { user: findUserById(user.id), users: listUsers() }
+  ctx.body = { user: findUserSummaryById(user.id), users: listUsers() }
 }
 
 /**

@@ -252,7 +252,7 @@ function mergeAvailableGroups(groups: AvailableGroup[]): AvailableGroup[] {
 }
 
 function redactModelGroup(group: AvailableGroup): AvailableGroup {
-  return { ...group, api_key: '' }
+  return { ...group, api_key: '', base_url: '' }
 }
 
 function sanitizeAvailableResponse(ctx: any, body: AvailableResponse): AvailableResponse {

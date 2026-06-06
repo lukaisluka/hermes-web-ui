@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockReadFile, mockReadConfigYaml, mockReadConfigYamlForProfile, mockFetchProviderModels, mockBuildModelGroups, mockReadAppConfig, mockWriteAppConfig, mockExistsSync, mockReadFileSync, mockListProfileNamesFromDisk, mockListUserProfiles, mockReadProviderModelCatalogCache, mockGetCachedProviderModels, mockRefreshConfiguredProviderModelCatalogs, mockWriteProviderModelCatalogEntry, mockGetCopilotModelsDetailed } = vi.hoisted(() => ({
+const { mockReadFile, mockReadConfigYaml, mockReadConfigYamlForProfile, mockFetchProviderModels, mockBuildModelGroups, mockReadAppConfig, mockWriteAppConfig, mockExistsSync, mockReadFileSync, mockListProfileNamesFromDisk, mockListUserProfiles, mockReadProviderModelCatalogCache, mockGetCachedProviderModels, mockRefreshConfiguredProviderModelCatalogs, mockWriteProviderModelCatalogEntry, mockGetCopilotModelsDetailed, mockIsRegularUser } = vi.hoisted(() => ({
   mockReadFile: vi.fn(),
   mockReadConfigYaml: vi.fn(),
   mockReadConfigYamlForProfile: vi.fn(),
@@ -17,6 +17,7 @@ const { mockReadFile, mockReadConfigYaml, mockReadConfigYamlForProfile, mockFetc
   mockRefreshConfiguredProviderModelCatalogs: vi.fn(),
   mockWriteProviderModelCatalogEntry: vi.fn(),
   mockGetCopilotModelsDetailed: vi.fn(async () => []),
+  mockIsRegularUser: vi.fn(() => false),
 }))
 
 vi.mock('fs/promises', () => ({
@@ -41,7 +42,7 @@ vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
 }))
 
 vi.mock('../../packages/server/src/middleware/user-auth', () => ({
-  isRegularUser: vi.fn(() => false),
+  isRegularUser: mockIsRegularUser,
   isSuperAdmin: (user: any) => user?.role === 'super_admin',
 }))
 
@@ -162,6 +163,7 @@ beforeEach(() => {
   mockRefreshConfiguredProviderModelCatalogs.mockResolvedValue(undefined)
   mockWriteProviderModelCatalogEntry.mockResolvedValue({})
   mockGetCopilotModelsDetailed.mockResolvedValue([])
+  mockIsRegularUser.mockReturnValue(false)
 })
 
 describe('models controller — model visibility', () => {
@@ -252,6 +254,50 @@ describe('models controller — model visibility', () => {
     expect(ctx.body.profiles.map((profile: any) => profile.profile)).toEqual(['research'])
     expect(ctx.body.groups).toEqual(expect.arrayContaining([
       expect.objectContaining({ provider: 'deepseek' }),
+    ]))
+  })
+
+  it('redacts provider credentials and base URLs for regular users', async () => {
+    mockIsRegularUser.mockReturnValue(true)
+    mockListProfileNamesFromDisk.mockReturnValue(['default'])
+    mockListUserProfiles.mockReturnValue([
+      { user_id: 8, profile_name: 'default', is_default: 1, created_at: 1 },
+    ])
+
+    const ctx = makeCtx()
+    ctx.state = { user: { id: 8, username: 'han', role: 'user' } }
+    await ctrl.getAvailable(ctx)
+
+    expect(ctx.body.groups).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        provider: 'deepseek',
+        api_key: '',
+        base_url: '',
+        builtin: true,
+      }),
+    ]))
+    expect(ctx.body.allProviders).toEqual(expect.arrayContaining([
+      expect.objectContaining({ api_key: '', base_url: '' }),
+    ]))
+    expect(ctx.body.profiles[0].groups).toEqual(expect.arrayContaining([
+      expect.objectContaining({ api_key: '', base_url: '' }),
+    ]))
+  })
+
+  it('preserves provider credentials and base URLs for administrators', async () => {
+    mockListUserProfiles.mockReturnValue([
+      { user_id: 7, profile_name: 'default', is_default: 1, created_at: 1 },
+    ])
+    const ctx = makeCtx()
+    ctx.state = { user: { id: 7, username: 'ops', role: 'admin' } }
+    await ctrl.getAvailable(ctx)
+
+    expect(ctx.body.groups).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        provider: 'deepseek',
+        api_key: 'sk-test',
+        base_url: 'https://api.deepseek.com/v1',
+      }),
     ]))
   })
 

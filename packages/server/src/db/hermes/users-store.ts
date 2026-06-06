@@ -37,6 +37,8 @@ export interface UserSummary {
   last_login_at: number | null
 }
 
+type UserSummaryRow = Omit<UserSummary, 'profiles' | 'default_profile'>
+
 export const DEFAULT_USERNAME = 'admin'
 export const DEFAULT_PASSWORD = '123456'
 export const DEFAULT_PROFILE_NAME = 'default'
@@ -94,15 +96,28 @@ export function listUsers(): UserSummary[] {
   if (!db) return []
   const users = db.prepare(
     `SELECT id, username, role, status, created_at, updated_at, last_login_at FROM ${USERS_TABLE} ORDER BY id ASC`
-  ).all() as Array<Omit<UserSummary, 'profiles' | 'default_profile'>>
-  return users.map(user => {
-    const profiles = listUserProfiles(user.id)
-    return {
-      ...user,
-      profiles: profiles.map(profile => profile.profile_name),
-      default_profile: profiles.find(profile => profile.is_default === 1)?.profile_name || null,
-    }
-  })
+  ).all() as UserSummaryRow[]
+  return users.map(toUserSummary)
+}
+
+export function findUserSummaryById(id: UserId): UserSummary | null {
+  const db = getDb()
+  if (!db) return null
+  const userId = normalizeUserId(id)
+  if (!userId) return null
+  const user = db.prepare(
+    `SELECT id, username, role, status, created_at, updated_at, last_login_at FROM ${USERS_TABLE} WHERE id = ?`
+  ).get(userId) as UserSummaryRow | undefined
+  return user ? toUserSummary(user) : null
+}
+
+function toUserSummary(user: UserSummaryRow): UserSummary {
+  const profiles = listUserProfiles(user.id)
+  return {
+    ...user,
+    profiles: profiles.map(profile => profile.profile_name),
+    default_profile: profiles.find(profile => profile.is_default === 1)?.profile_name || null,
+  }
 }
 
 export function listUserProfiles(userId: UserId): UserProfileRecord[] {

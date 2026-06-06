@@ -142,9 +142,16 @@ describe('user auth tables and middleware', () => {
   })
 
   it('uses the first authorized profile as a safe fallback for regular users', async () => {
-    const { auth } = await initUsers()
+    const { users, auth } = await initUsers()
+    const user = users.createUser({
+      username: 'han',
+      password: 'secret',
+      role: 'user',
+      profiles: ['research', 'travel'],
+      defaultProfile: 'research',
+    })!
     const ctx = makeCtx({
-      id: 3,
+      id: user.id,
       username: 'han',
       role: 'user',
       profiles: ['research', 'travel'],
@@ -155,6 +162,31 @@ describe('user auth tables and middleware', () => {
 
     expect(ctx.state.profile).toEqual({ name: 'research' })
     expect(next).toHaveBeenCalledOnce()
+  })
+
+  it('rejects a stale fallback profile after its database authorization is revoked', async () => {
+    const { users, auth } = await initUsers()
+    const user = users.createUser({
+      username: 'han',
+      password: 'secret',
+      role: 'user',
+      profiles: ['research'],
+      defaultProfile: 'research',
+    })!
+    users.replaceUserProfiles(user.id, [])
+    const ctx = makeCtx({
+      id: user.id,
+      username: 'han',
+      role: 'user',
+      profiles: ['research'],
+    }, '')
+    const next = vi.fn(async () => {})
+
+    await auth.resolveUserProfile(ctx, next)
+
+    expect(ctx.status).toBe(403)
+    expect(ctx.body).toEqual({ error: 'Profile "research" is not available for this user' })
+    expect(next).not.toHaveBeenCalled()
   })
 
   it('rejects regular users without an authorized profile', async () => {
@@ -375,6 +407,32 @@ describe('user auth tables and middleware', () => {
     expect(users.listUserProfiles(created!.id).map(profile => profile.profile_name)).toEqual(['research'])
   })
 
+  it('lists managed users without authentication-sensitive fields', async () => {
+    const { users } = await initUsers()
+    users.createUser({
+      username: 'ops',
+      password: 'secret1',
+      role: 'admin',
+      profiles: ['research'],
+    })
+    vi.doMock('../../packages/server/src/services/hermes/hermes-profile', () => ({
+      listProfileNamesFromDisk: () => ['default', 'research'],
+    }))
+    const ctrl = await import('../../packages/server/src/controllers/auth')
+    const ctx = { body: null } as any
+
+    await ctrl.listManagedUsers(ctx)
+
+    expect(ctx.body.users).toHaveLength(1)
+    expect(ctx.body.users[0]).not.toHaveProperty('password_hash')
+    expect(ctx.body.users[0]).not.toHaveProperty('avatar')
+    expect(ctx.body.users[0]).toMatchObject({
+      username: 'ops',
+      role: 'admin',
+      profiles: ['research'],
+    })
+  })
+
   it('defaults newly managed accounts to regular users with profile bindings', async () => {
     const { users } = await initUsers()
     vi.doMock('../../packages/server/src/services/hermes/hermes-profile', () => ({
@@ -422,6 +480,38 @@ describe('user auth tables and middleware', () => {
 
     expect(ctx.status).toBe(400)
     expect(ctx.body).toEqual({ error: 'You cannot disable your own account' })
+  })
+
+  it('updates managed users without returning authentication-sensitive fields', async () => {
+    const { users } = await initUsers()
+    const user = users.createUser({
+      username: 'han',
+      password: 'secret1',
+      role: 'user',
+      profiles: ['research'],
+    })!
+    vi.doMock('../../packages/server/src/services/hermes/hermes-profile', () => ({
+      listProfileNamesFromDisk: () => ['default', 'research'],
+    }))
+    const ctrl = await import('../../packages/server/src/controllers/auth')
+    const ctx = {
+      state: { user: { id: 1, username: 'admin', role: 'super_admin' } },
+      params: { id: String(user.id) },
+      request: { body: { username: 'han-updated' } },
+      status: 200,
+      body: null,
+    } as any
+
+    await ctrl.updateManagedUser(ctx)
+
+    expect(ctx.body.user).not.toHaveProperty('password_hash')
+    expect(ctx.body.user).not.toHaveProperty('avatar')
+    expect(ctx.body.users.every((candidate: any) => !Object.prototype.hasOwnProperty.call(candidate, 'password_hash'))).toBe(true)
+    expect(ctx.body.user).toMatchObject({
+      username: 'han-updated',
+      role: 'user',
+      profiles: ['research'],
+    })
   })
 
   it('requires super admin for super-admin-only middleware', async () => {
