@@ -763,7 +763,7 @@ async function saveToolsVisibility() {
 }
 
 .config-textarea {
-  font-family: monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
 }
 

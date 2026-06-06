@@ -5,6 +5,8 @@
 // ─── CSS Custom Properties ─────────────────────────────────────
 
 :root {
+  font-size-adjust: 0.535;
+
   // Backgrounds
   --bg-primary: #fafafa;
   --bg-secondary: #f0f0f0;
@@ -115,7 +117,8 @@
   --msg-system-border: #1a1a1a;
 
   // Comic-specific
-  --font-ui: 'Comic Neue', 'ZCOOL KuaiLe', 'Zen Maru Gothic', 'Gaegu', cursive, sans-serif;
+  --font-ui: 'Comic Neue', 'Zen Maru Gothic', 'Gaegu', 'ZCOOL KuaiLe', cursive, sans-serif;
+  font-size-adjust: 0.515;
   --comic-border-width: 2.5px;
   --comic-shadow: 3px 3px 0px rgba(0, 0, 0, 0.15);
 }
@@ -168,8 +171,20 @@ $msg-system-border: var(--msg-system-border);
 $code-bg: var(--code-bg);
 
 // Typography
-$font-ui: var(--font-ui, 'Inter', system-ui, -apple-system, sans-serif);
-$font-code: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+$font-ui: var(
+  --font-ui,
+  'Noto Sans SC',
+  -apple-system,
+  BlinkMacSystemFont,
+  'SF Pro Text',
+  'Segoe UI Variable Text',
+  'Segoe UI',
+  'PingFang SC',
+  'Microsoft YaHei UI',
+  'Microsoft YaHei',
+  sans-serif
+);
+$font-code: 'JetBrains Mono', 'SFMono-Regular', 'Cascadia Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
 
 // Layout
 $sidebar-width: 240px;

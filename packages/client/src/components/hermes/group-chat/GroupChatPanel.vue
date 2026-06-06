@@ -822,7 +822,7 @@ export default defineComponent({ components: { CreateRoomForm } })
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-word;
-    font-family: "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     line-height: 1.45;
     color: $text-primary;

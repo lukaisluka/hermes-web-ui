@@ -409,7 +409,7 @@ function confirmDelete(category: string, skillName: string) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: 'JetBrains Mono', monospace;
     direction: rtl;
     text-align: left;
 }

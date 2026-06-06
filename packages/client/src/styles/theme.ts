@@ -1,5 +1,9 @@
 import type { GlobalThemeOverrides } from 'naive-ui'
 
+const uiFont = "'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif"
+const monoFont = "'JetBrains Mono', 'SFMono-Regular', 'Cascadia Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace"
+const comicFont = "'Comic Neue', 'Zen Maru Gothic', 'Gaegu', 'ZCOOL KuaiLe', cursive, sans-serif"
+
 export const lightThemeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: '#333333',
@@ -25,8 +29,8 @@ export const lightThemeOverrides: GlobalThemeOverrides = {
     fontSize: '14px',
     fontSizeMedium: '14px',
     heightMedium: '36px',
-    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-    fontFamilyMono: 'JetBrains Mono, Fira Code, Consolas, monospace',
+    fontFamily: uiFont,
+    fontFamilyMono: monoFont,
   },
   Layout: {
     color: '#fafafa',
@@ -95,8 +99,8 @@ export const darkThemeOverrides: GlobalThemeOverrides = {
     fontSize: '14px',
     fontSizeMedium: '14px',
     heightMedium: '36px',
-    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-    fontFamilyMono: 'JetBrains Mono, Fira Code, Consolas, monospace',
+    fontFamily: uiFont,
+    fontFamilyMono: monoFont,
   },
   Layout: {
     color: '#1a1a1a',
@@ -149,7 +153,6 @@ export const darkThemeOverrides: GlobalThemeOverrides = {
 export function getThemeOverrides(isDark: boolean, isComic?: boolean): GlobalThemeOverrides {
   const base = isDark ? darkThemeOverrides : lightThemeOverrides
   if (!isComic) return base
-  const comicFont = "'Comic Neue', 'ZCOOL KuaiLe', 'Zen Maru Gothic', 'Gaegu', cursive, sans-serif"
   return {
     ...base,
     common: {

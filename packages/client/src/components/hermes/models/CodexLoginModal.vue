@@ -214,7 +214,7 @@ startLogin()
 .codex-login__code-text {
   font-size: 28px;
   font-weight: 700;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', monospace;
   letter-spacing: 4px;
   color: var(--n-text-color, inherit);
 }

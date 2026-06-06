@@ -734,7 +734,7 @@ onMounted(() => {
 .version-text {
   min-width: 0;
   color: $text-secondary;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -766,7 +766,7 @@ onMounted(() => {
   padding: 3px 6px;
   border-radius: 6px;
   cursor: pointer;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
 
   &:hover {
@@ -813,7 +813,7 @@ onMounted(() => {
 
   :deep(.n-input__textarea-el) {
     height: 100%;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     line-height: 1.5;
   }

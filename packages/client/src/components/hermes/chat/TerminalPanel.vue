@@ -268,7 +268,7 @@ function getOrCreateTerm(id: string): { term: Terminal; fitAddon: FitAddon } {
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 14,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontFamily: '"JetBrains Mono", monospace',
       theme: { ...TERMINAL_THEMES[selectedTheme.value].theme },
     });
     const fitAddon = new FitAddon();

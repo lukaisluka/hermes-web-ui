@@ -32,6 +32,7 @@ onMounted(() => {
     language: filesStore.editingFile.language,
     theme: document.documentElement.classList.contains('dark') ? 'vs-dark' : 'vs',
     minimap: { enabled: false },
+    fontFamily: 'JetBrains Mono',
     fontSize: 13,
     lineNumbers: 'on',
     scrollBeyondLastLine: false,

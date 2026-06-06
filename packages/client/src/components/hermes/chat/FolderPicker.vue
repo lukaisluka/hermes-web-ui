@@ -275,7 +275,7 @@ const flatNodes = computed<FlatNode[]>(() => {
 }
 
 .folder-selected-path {
-  font-family: monospace;
+  font-family: 'JetBrains Mono', monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
