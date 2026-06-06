@@ -12,7 +12,7 @@ import { useSessionSearch } from '@/composables/useSessionSearch'
 import { usePersistentRecord } from '@/composables/usePersistentRecord'
 import RouteLinkItem from '@/components/common/RouteLinkItem.vue'
 import { changelog } from "@/data/changelog";
-import { getStoredUserRole, isStoredProfileAdmin, isStoredSuperAdmin, replaceAppRoute } from "@/api/client";
+import { isStoredProfileAdmin, isStoredSuperAdmin, replaceAppRoute } from "@/api/client";
 
 const { t } = useI18n();
 const message = useMessage();
@@ -28,7 +28,6 @@ const selectedKey = computed(() => {
 });
 const isSuperAdmin = computed(() => isStoredSuperAdmin());
 const isProfileAdmin = computed(() => isStoredProfileAdmin());
-const isRegularUser = computed(() => getStoredUserRole() === 'user');
 const isVersionPreview = import.meta.env.VITE_HERMES_PREVIEW === '1';
 
 function isNavActive(...names: string[]) {
@@ -370,7 +369,7 @@ function openChangelog() {
       <NButton v-if="appStore.clientOutdated" type="warning" size="tiny" block class="update-btn" @click="handleReloadClient">
         {{ t('sidebar.reloadClientVersion', { version: appStore.serverVersion }) }}
       </NButton>
-      <NButton v-if="appStore.updateAvailable && !isRegularUser" type="primary" size="tiny" block class="update-btn" :loading="appStore.updating" @click="handleUpdate">
+      <NButton v-if="appStore.updateAvailable && isSuperAdmin" type="primary" size="tiny" block class="update-btn" :loading="appStore.updating" @click="handleUpdate">
         {{ appStore.updating ? t('sidebar.updating') : t('sidebar.updateVersion', { version: appStore.latestVersion }) }}
       </NButton>
     </div>

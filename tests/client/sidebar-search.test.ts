@@ -242,6 +242,37 @@ describe('AppSidebar search entry', () => {
     }
   })
 
+  it('shows the update button only to super admins', () => {
+    mockAppStore.updateAvailable = true
+    mockAppStore.latestVersion = '0.6.11'
+
+    setRole('admin')
+    const adminWrapper = mount(AppSidebar, {
+      global: {
+        stubs: {
+          ProfileSelector: true,
+          ModelSelector: true,
+          LanguageSwitch: true,
+          ThemeSwitch: true,
+        },
+      },
+    })
+    expect(adminWrapper.text()).not.toContain('sidebar.updateVersion')
+
+    setRole('super_admin')
+    const superAdminWrapper = mount(AppSidebar, {
+      global: {
+        stubs: {
+          ProfileSelector: true,
+          ModelSelector: true,
+          LanguageSwitch: true,
+          ThemeSwitch: true,
+        },
+      },
+    })
+    expect(superAdminWrapper.text()).toContain('sidebar.updateVersion')
+  })
+
   it('fully reloads the app when logging out to clear account-scoped state', async () => {
     localStorage.setItem('hermes_api_key', 'test-token')
     const wrapper = mount(AppSidebar, {
