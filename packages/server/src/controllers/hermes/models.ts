@@ -10,6 +10,9 @@ import { getDb } from '../../db'
 import { MODEL_CONTEXT_TABLE } from '../../db/hermes/schemas'
 import { listUserProfiles } from '../../db/hermes/users-store'
 import { isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
+import { AuditService } from '../../services/audit'
+
+const audit = AuditService.getInstance()
 import {
   getCachedProviderModels,
   readProviderModelCatalogCache,
@@ -775,6 +778,14 @@ export async function addCustomModel(ctx: any) {
     customModels[providerKey] = Array.from(new Set([...(customModels[providerKey] || []), modelId]))
     const saved = await writeAppConfig({ customModels })
     ctx.body = { success: true, custom_models: normalizeCustomModels(saved.customModels) }
+    audit.recordEvent({
+      action: 'model.add_custom',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestScopedProfileName(ctx),
+      targetType: 'model',
+      targetId: modelId,
+      description: `Added custom model "${modelId}" to provider "${providerKey}"`,
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -801,6 +812,14 @@ export async function removeCustomModel(ctx: any) {
     else delete customModels[providerKey]
     const saved = await writeAppConfig({ customModels })
     ctx.body = { success: true, custom_models: normalizeCustomModels(saved.customModels) }
+    audit.recordEvent({
+      action: 'model.remove_custom',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestScopedProfileName(ctx),
+      targetType: 'model',
+      targetId: modelId,
+      description: `Removed custom model "${modelId}" from provider "${providerKey}"`,
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -933,6 +952,16 @@ export async function setModelAlias(ctx: any) {
     }
     await writeAppConfig({ modelAliases })
     ctx.body = { success: true, model_aliases: modelAliases }
+    audit.recordEvent({
+      action: 'model.set_alias',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestScopedProfileName(ctx),
+      targetType: 'model',
+      targetId: cleanAlias || cleanModel,
+      description: cleanAlias
+        ? `Set alias "${cleanAlias}" for ${cleanProvider}/${cleanModel}`
+        : `Removed alias for ${cleanProvider}/${cleanModel}`,
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -965,6 +994,14 @@ export async function setConfigModel(ctx: any) {
       return config
     })
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'model.set_config',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestScopedProfileName(ctx),
+      targetType: 'model',
+      targetId: defaultModel,
+      description: `Set config model to "${defaultModel}"`,
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -1036,6 +1073,14 @@ export async function updateModelContext(ctx: any) {
       success: true,
       data: row
     }
+    audit.recordEvent({
+      action: 'model.update_context',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestScopedProfileName(ctx),
+      targetType: 'model',
+      targetId: `${provider}/${model}`,
+      description: `Updated context limit for ${provider}/${model} to ${context_limit}`,
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -1125,6 +1170,14 @@ export async function setModelVisibility(ctx: any) {
     }
     const saved = await writeAppConfig({ modelVisibility })
     ctx.body = { success: true, model_visibility: normalizeModelVisibility(saved.modelVisibility) }
+    audit.recordEvent({
+      action: 'model.set_visibility',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestScopedProfileName(ctx),
+      targetType: 'model',
+      targetId: providerKey,
+      description: `Set model visibility for "${providerKey}" to ${mode}`,
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }

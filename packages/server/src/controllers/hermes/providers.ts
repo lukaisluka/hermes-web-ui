@@ -5,6 +5,9 @@ import { getActiveProfileName, getProfileDir } from '../../services/hermes/herme
 import { updateConfigYamlForProfile, saveEnvValueForProfile, PROVIDER_ENV_MAP } from '../../services/config-helpers'
 import { PROVIDER_PRESETS } from '../../shared/providers'
 import { logger } from '../../services/logger'
+import { AuditService } from '../../services/audit'
+
+const audit = AuditService.getInstance()
 
 const OPTIONAL_API_KEY_PROVIDERS = new Set(['cliproxyapi', 'xai-oauth', 'openai-codex'])
 const DIRECT_CONFIG_PROVIDERS = new Set(['xai-oauth', 'openai-codex'])
@@ -145,6 +148,14 @@ export async function create(ctx: any) {
     // TODO: Test if provider works without gateway restart
     // try { await hermesCli.restartGateway() } catch (e: any) { logger.error(e, 'Gateway restart failed') }
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'provider.create',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'provider',
+      targetId: poolKey,
+      description: `Created provider "${poolKey}"`,
+    })
   } catch (err: any) {
     ctx.status = 500; ctx.body = { error: err.message }
   }
@@ -184,6 +195,14 @@ export async function update(ctx: any) {
     // TODO: Test if provider works without gateway restart
     // try { await hermesCli.restartGateway() } catch (e: any) { logger.error(e, 'Gateway restart failed') }
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'provider.update',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'provider',
+      targetId: poolKey,
+      description: `Updated provider "${poolKey}"`,
+    })
   } catch (err: any) {
     ctx.status = 500; ctx.body = { error: err.message }
   }
@@ -241,6 +260,14 @@ export async function remove(ctx: any) {
     // TODO: Test if provider works without gateway restart
     // try { await hermesCli.restartGateway() } catch (e: any) { logger.error(e, 'Gateway restart failed') }
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'provider.delete',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'provider',
+      targetId: poolKey,
+      description: `Deleted provider "${poolKey}"`,
+    })
   } catch (err: any) {
     ctx.status = 500; ctx.body = { error: err.message }
   }

@@ -13,6 +13,9 @@ import { getActiveProfileName, getProfileDir } from '../../services/hermes/herme
 import { getSkillUsageStatsFromDb, type HermesSkillUsageStats } from '../../db/hermes/sessions-db'
 import { listUserProfiles } from '../../db/hermes/users-store'
 import { isRegularUser } from '../../middleware/user-auth'
+import { AuditService } from '../../services/audit'
+
+const audit = AuditService.getInstance()
 
 function requestedProfile(ctx: any): string {
   return ctx.state?.profile?.name || getActiveProfileName() || 'default'
@@ -507,6 +510,22 @@ function mergeExternalCategories(categories: any[], externalCategories: any[]): 
   return merged
 }
 
+function sanitizeSkillsForRegularUser(categories: any[]) {
+  return categories
+    .map(category => ({
+      name: category.name,
+      description: category.description,
+      skills: (category.skills || [])
+        .filter((skill: any) => skill.enabled !== false)
+        .map((skill: any) => ({
+          name: skill.name,
+          description: skill.description,
+          enabled: true,
+        })),
+    }))
+    .filter(category => category.skills.length > 0)
+}
+
 export async function list(ctx: any) {
   const skillsDir = requestSkillsDir(ctx)
   try {
@@ -557,6 +576,13 @@ export async function list(ctx: any) {
 
     const externalDirs = await resolveExternalSkillsDirs(config, skillsDir)
     const externalRaw = await describeRawExternalDirs(config)
+    if (isRegularUser(ctx.state?.user)) {
+      ctx.body = {
+        categories: sanitizeSkillsForRegularUser(categories),
+        archived: [],
+      }
+      return
+    }
     ctx.body = {
       categories,
       archived,
@@ -668,6 +694,15 @@ export async function updateExternalDirs(ctx: any) {
       return config
     })
     ctx.body = { success: true, dirs: deduped }
+    audit.recordEvent({
+      action: 'skill.update_external_dirs',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'skill',
+      targetId: '',
+      description: 'Updated external skill directories',
+      meta: { dirs: deduped },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -692,6 +727,15 @@ export async function toggle(ctx: any) {
       return config
     })
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'skill.toggle',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'skill',
+      targetId: name,
+      description: `Toggled skill "${name}" (${enabled ? 'enabled' : 'disabled'})`,
+      meta: { skill: name, enabled },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -789,6 +833,15 @@ export async function pin_(ctx: any) {
   try {
     await updatePinnedSkill(requestSkillsDir(ctx), name, pinned)
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'skill.pin',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'skill',
+      targetId: name,
+      description: `${pinned ? 'Pinned' : 'Unpinned'} skill "${name}"`,
+      meta: { skill: name, pinned },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -899,6 +952,15 @@ export async function deleteSkill(ctx: any) {
     } catch { /* config cleanup is best-effort */ }
 
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'skill.delete',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'skill',
+      targetId: name,
+      description: `Deleted skill "${name}"`,
+      meta: { category, skill: name },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -1155,6 +1217,15 @@ export async function importSkill(ctx: any) {
     }
 
     ctx.body = { success: true, name: skillName }
+    audit.recordEvent({
+      action: 'skill.import',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: requestedProfile(ctx),
+      targetType: 'skill',
+      targetId: skillName,
+      description: `Imported skill "${skillName}"`,
+      meta: { url: ctx.request.body?.url ?? '', skillName },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
