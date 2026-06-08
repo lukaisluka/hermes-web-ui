@@ -39,6 +39,10 @@ export function bindShutdown(server: any, groupChatServer?: any, chatRunServer?:
     console.log(`[shutdown] Received signal: ${signal}`)
 
     try {
+      // Stop audit purge scheduler
+      const { AuditService } = await import("./audit")
+      AuditService.getInstance().stopPurgeScheduler()
+
       if (agentBridgeManager && shouldStopAgentBridgeOnShutdown(signal)) {
         try {
           await agentBridgeManager.stop()

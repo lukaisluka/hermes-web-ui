@@ -211,6 +211,11 @@ export async function bootstrap() {
   sessionDeleter.start(activeProfile)
   console.log('[bootstrap] session deleter started, profile=%s', activeProfile)
 
+  // Audit purge scheduler — daily cleanup of expired events
+  const { AuditService } = await import('./services/audit')
+  const auditService = AuditService.getInstance()
+  auditService.startPurgeScheduler()
+
   // Catch-all: destroy upgrade requests not handled by terminal or Socket.IO
   servers.forEach((httpServer) => {
     httpServer.on('upgrade', (req: any, socket: any) => {

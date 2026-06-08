@@ -389,4 +389,39 @@ export class AuditService {
     const events = this.queryEvents(options)
     return JSON.stringify(events, null, 2)
   }
+
+  // ============================================================================
+  // Purge Scheduler
+  // ============================================================================
+
+  private purgeTimer: ReturnType<typeof setInterval> | null = null
+  private static readonly PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000 // Daily
+
+  /**
+   * Start the automatic purge scheduler.
+   * Runs once daily, deleting events older than the retention period.
+   * Call this once at application bootstrap.
+   */
+  startPurgeScheduler(): void {
+    if (this.purgeTimer) return // Already running
+
+    // Run once immediately at startup, then daily
+    this.purgeExpired()
+    this.purgeTimer = setInterval(() => {
+      this.purgeExpired()
+    }, AuditService.PURGE_INTERVAL_MS)
+
+    console.log('[AuditService] Purge scheduler started (90-day retention, daily interval)')
+  }
+
+  /**
+   * Stop the purge scheduler. Call at application shutdown.
+   */
+  stopPurgeScheduler(): void {
+    if (this.purgeTimer) {
+      clearInterval(this.purgeTimer)
+      this.purgeTimer = null
+      console.log('[AuditService] Purge scheduler stopped')
+    }
+  }
 }
