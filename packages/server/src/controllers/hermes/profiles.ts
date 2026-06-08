@@ -18,6 +18,9 @@ import { HermesSkillInjector } from '../../services/hermes/skill-injector'
 import type { HermesProfile } from '../../services/hermes/hermes-cli'
 import { listUserProfiles } from '../../db/hermes/users-store'
 import { isSuperAdmin } from '../../middleware/user-auth'
+import { AuditService } from '../../services/audit'
+
+const audit = AuditService.getInstance()
 
 const bridgeCleanupClient = () => new AgentBridgeClient({ connectRetryMs: 0, timeoutMs: 5000 })
 
@@ -440,6 +443,16 @@ export async function create(ctx: any) {
 
     await injectBundledSkillsForProfile(name)
 
+    audit.recordEvent({
+      action: 'profile.create',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: name,
+      targetType: 'profile',
+      targetId: name,
+      description: `Created profile "${name}"`,
+      meta: { name },
+    })
+
     ctx.body = {
       success: true,
       message: output.trim(),
@@ -484,6 +497,15 @@ export async function updateAvatar(ctx: any) {
       const meta: ProfileAvatarMeta = { type: 'generated', seed, updatedAt }
       rmSync(profileAvatarImagePath(name), { force: true })
       await writeFile(profileAvatarMetaPath(name), JSON.stringify(meta, null, 2) + '\n', { mode: 0o600 })
+      audit.recordEvent({
+        action: 'profile.update_avatar',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: name,
+        targetType: 'profile',
+        targetId: name,
+        description: `Updated avatar for profile "${name}"`,
+        meta: { name },
+      })
       ctx.body = { avatar: readProfileAvatar(name) }
       return
     }
@@ -493,6 +515,15 @@ export async function updateAvatar(ctx: any) {
       const meta: ProfileAvatarMeta = { type: 'image', file: 'avatar.bin', mime, updatedAt }
       await writeFile(profileAvatarImagePath(name), buffer, { mode: 0o600 })
       await writeFile(profileAvatarMetaPath(name), JSON.stringify(meta, null, 2) + '\n', { mode: 0o600 })
+      audit.recordEvent({
+        action: 'profile.update_avatar',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: name,
+        targetType: 'profile',
+        targetId: name,
+        description: `Updated avatar for profile "${name}"`,
+        meta: { name },
+      })
       ctx.body = { avatar: readProfileAvatar(name) }
       return
     }
@@ -510,6 +541,15 @@ export async function deleteAvatar(ctx: any) {
   if (denyProfile(ctx, name)) return
   try {
     removeProfileMetadata(name)
+    audit.recordEvent({
+      action: 'profile.delete_avatar',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: name,
+      targetType: 'profile',
+      targetId: name,
+      description: `Deleted avatar for profile "${name}"`,
+      meta: { name },
+    })
     ctx.body = { success: true }
   } catch (err: any) {
     ctx.status = 500
@@ -601,6 +641,15 @@ export async function restartGatewayForProfile(ctx: any) {
       logger.warn(err, '[profiles] failed to destroy bridge sessions after gateway restart profile=%s', name)
     }
     ctx.body = { success: true, gateway }
+    audit.recordEvent({
+      action: 'profile.restart_gateway',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: name,
+      targetType: 'profile',
+      targetId: name,
+      description: `Restarted gateway for profile "${name}"`,
+      meta: { name },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -627,6 +676,15 @@ export async function restartProfileRuntime(ctx: any) {
       destroyed: result.destroyed,
       status,
     }
+    audit.recordEvent({
+      action: 'profile.restart_runtime',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: name,
+      targetType: 'profile',
+      targetId: name,
+      description: `Restarted runtime for profile "${name}"`,
+      meta: { name },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -651,9 +709,27 @@ export async function remove(ctx: any) {
     const ok = await hermesCli.deleteProfile(name)
     if (ok) {
       removeProfileMetadata(name)
+      audit.recordEvent({
+        action: 'profile.delete',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: name,
+        targetType: 'profile',
+        targetId: name,
+        description: `Deleted profile "${name}"`,
+        meta: { name },
+      })
       ctx.body = { success: true }
     } else if (deleteForbiddenProfileFromDisk(name)) {
       removeProfileMetadata(name)
+      audit.recordEvent({
+        action: 'profile.delete',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: name,
+        targetType: 'profile',
+        targetId: name,
+        description: `Deleted profile "${name}"`,
+        meta: { name },
+      })
       ctx.body = { success: true, fallback: 'removed_reserved_profile_from_disk' }
     } else {
       ctx.status = 500
@@ -677,6 +753,15 @@ export async function rename(ctx: any) {
     const ok = await hermesCli.renameProfile(ctx.params.name, new_name)
     if (ok) {
       renameProfileMetadata(ctx.params.name, new_name)
+      audit.recordEvent({
+        action: 'profile.rename',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: new_name,
+        targetType: 'profile',
+        targetId: new_name,
+        description: `Renamed profile from "${ctx.params.name}" to "${new_name}"`,
+        meta: { oldName: ctx.params.name, newName: new_name },
+      })
       ctx.body = { success: true }
     } else {
       ctx.status = 500
@@ -742,6 +827,16 @@ export async function switchProfile(ctx: any) {
     SessionDeleter.getInstance().switchProfile(name)
     logger.info('[switchProfile] switched session deleter to Hermes profile "%s"', name)
 
+    audit.recordEvent({
+      action: 'profile.switch_active',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: name,
+      targetType: 'profile',
+      targetId: name,
+      description: `Switched active profile to "${name}"`,
+      meta: { name },
+    })
+
     ctx.body = {
       success: true,
       message: output.trim(),
@@ -769,6 +864,15 @@ export async function exportProfile(ctx: any) {
     ctx.set('Content-Type', 'application/gzip')
     ctx.body = createReadStream(outputPath)
     ctx.res.on('finish', () => { try { unlinkSync(outputPath) } catch { } })
+    audit.recordEvent({
+      action: 'profile.export',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: name,
+      targetType: 'profile',
+      targetId: name,
+      description: `Exported profile "${name}"`,
+      meta: { name },
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -817,6 +921,16 @@ export async function importProfile(ctx: any) {
   try {
     const result = await hermesCli.importProfile(archivePath)
     try { unlinkSync(archivePath) } catch { }
+    const importedName = result.trim().split('\n').pop()?.replace(/^.*profile\s+/i, '').trim() || basename(archivePath).replace(/\.(tar\.gz|tgz|gz|zip)$/i, '')
+    audit.recordEvent({
+      action: 'profile.import',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile: importedName,
+      targetType: 'profile',
+      targetId: importedName,
+      description: `Imported profile "${importedName}"`,
+      meta: { name: importedName },
+    })
     ctx.body = { success: true, message: result.trim() }
   } catch (err: any) {
     try { unlinkSync(archivePath) } catch { }
