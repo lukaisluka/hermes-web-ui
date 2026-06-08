@@ -122,6 +122,12 @@ const router = createRouter({
       name: 'poiera.mcp',
       component: () => import('@/views/hermes/McpManagerView.vue'),
     },
+    {
+      path: '/poiera/audit',
+      name: 'poiera.audit',
+      component: () => import('@/views/hermes/AuditView.vue'),
+      meta: { requiresProfileAdmin: true },
+    },
   ],
 })
 
