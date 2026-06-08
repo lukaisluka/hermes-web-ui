@@ -4,8 +4,12 @@ import { join } from 'path'
 import { getHermesBin } from '../../services/hermes/hermes-path'
 import { getActiveProfileName, getProfileDir } from '../../services/hermes/hermes-profile'
 import { execHermesWithBin } from '../../services/hermes/hermes-process'
-import { listUserProfiles } from '../../db/hermes/users-store'
-import { isRegularUser } from '../../middleware/user-auth'
+import { findUserById, listUserProfiles, userCanAccessProfile } from '../../db/hermes/users-store'
+import { deleteJobOwner, getJobOwnerId, setJobOwner } from '../../db/hermes/job-ownership-store'
+import { isProfileAdmin, isRegularUser } from '../../middleware/user-auth'
+import { AuditService } from '../../services/audit'
+
+const audit = AuditService.getInstance()
 
 const TIMEOUT_MS = 60_000
 
@@ -75,6 +79,24 @@ function findJob(profile: string, jobId: string): JobRecord | null {
 
 function scopedJob(job: JobRecord | null, profile: string): JobRecord | null {
   return job ? { ...job, profile } : null
+}
+
+function canManageJob(ctx: Context, profile: string, jobId: string): boolean {
+  const user = ctx.state?.user
+  if (!user || isProfileAdmin(user)) return true
+  return getJobOwnerId(profile, jobId) === user.id
+}
+
+function rejectJobManagement(ctx: Context, profile: string, jobId: string): boolean {
+  if (canManageJob(ctx, profile, jobId)) return false
+  ctx.status = 403
+  ctx.body = { error: { message: 'Only the job owner or a profile administrator can manage this job' } }
+  return true
+}
+
+function visibleJob(ctx: Context, job: JobRecord, profile: string): JobRecord {
+  const id = String(job.job_id || job.id || '')
+  return { ...job, profile, can_manage: canManageJob(ctx, profile, id) }
 }
 
 function boolQuery(value: unknown, defaultValue: boolean): boolean {
@@ -166,19 +188,19 @@ export async function list(ctx: Context) {
   if (user && isRegularUser(user) && !explicitProfile) {
     const jobs = listUserProfiles(user.id)
       .flatMap(profile => readJobs(profile.profile_name, includeDisabled)
-        .map(job => ({ ...job, profile: profile.profile_name })))
+        .map(job => visibleJob(ctx, job, profile.profile_name)))
     ctx.body = { jobs }
     return
   }
   const profile = resolveProfile(ctx)
-  ctx.body = { jobs: readJobs(profile, includeDisabled).map(job => ({ ...job, profile })) }
+  ctx.body = { jobs: readJobs(profile, includeDisabled).map(job => visibleJob(ctx, job, profile)) }
 }
 
 export async function get(ctx: Context) {
   const profile = resolveProfile(ctx)
   const job = findJob(profile, ctx.params.id)
   if (!job) return sendJobNotFound(ctx)
-  ctx.body = { job: scopedJob(job, profile) }
+  ctx.body = { job: visibleJob(ctx, job, profile) }
 }
 
 export async function create(ctx: Context) {
@@ -220,7 +242,19 @@ export async function create(ctx: Context) {
   try {
     await runHermesCron(profile, args)
     const job = scopedJob(findCreatedJob(beforeJobs, readJobs(profile, true)), profile)
-    ctx.body = { job }
+    const jobId = String(job?.job_id || job?.id || '')
+    if (jobId && ctx.state.user) setJobOwner(profile, jobId, ctx.state.user.id)
+    ctx.body = { job: job ? visibleJob(ctx, job, profile) : null }
+    if (jobId) {
+      audit.recordEvent({
+        action: 'job.create',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile,
+        targetType: 'job',
+        targetId: jobId,
+        description: `Created job "${job?.name || jobId}"`,
+      })
+    }
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -230,6 +264,7 @@ export async function update(ctx: Context) {
   const profile = resolveProfile(ctx)
   const body = getBody(ctx)
   if (!findJob(profile, ctx.params.id)) return sendJobNotFound(ctx)
+  if (rejectJobManagement(ctx, profile, ctx.params.id)) return
 
   const args = ['cron', 'edit', ctx.params.id]
   if (body.schedule != null || body.schedule_display != null) {
@@ -273,11 +308,23 @@ export async function update(ctx: Context) {
 
 export async function remove(ctx: Context) {
   const profile = resolveProfile(ctx)
-  if (!findJob(profile, ctx.params.id)) return sendJobNotFound(ctx)
+  const job = findJob(profile, ctx.params.id)
+  if (!job) return sendJobNotFound(ctx)
+  if (rejectJobManagement(ctx, profile, ctx.params.id)) return
+  const jobName = job.name || ctx.params.id
 
   try {
     await runHermesCron(profile, ['cron', 'remove', ctx.params.id])
+    deleteJobOwner(profile, ctx.params.id)
     ctx.body = { ok: true }
+    audit.recordEvent({
+      action: 'job.delete',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'job',
+      targetId: ctx.params.id,
+      description: `Deleted job "${jobName}"`,
+    })
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -285,12 +332,23 @@ export async function remove(ctx: Context) {
 
 export async function pause(ctx: Context) {
   const profile = resolveProfile(ctx)
-  if (!findJob(profile, ctx.params.id)) return sendJobNotFound(ctx)
+  const job = findJob(profile, ctx.params.id)
+  if (!job) return sendJobNotFound(ctx)
+  if (rejectJobManagement(ctx, profile, ctx.params.id)) return
+  const jobName = job.name || ctx.params.id
 
   try {
     await runHermesCron(profile, ['cron', 'pause', ctx.params.id])
-    const job = scopedJob(findJob(profile, ctx.params.id), profile)
-    ctx.body = { job }
+    const updatedJob = scopedJob(findJob(profile, ctx.params.id), profile)
+    ctx.body = { job: updatedJob }
+    audit.recordEvent({
+      action: 'job.pause',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'job',
+      targetId: ctx.params.id,
+      description: `Paused job "${jobName}"`,
+    })
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -298,12 +356,23 @@ export async function pause(ctx: Context) {
 
 export async function resume(ctx: Context) {
   const profile = resolveProfile(ctx)
-  if (!findJob(profile, ctx.params.id)) return sendJobNotFound(ctx)
+  const job = findJob(profile, ctx.params.id)
+  if (!job) return sendJobNotFound(ctx)
+  if (rejectJobManagement(ctx, profile, ctx.params.id)) return
+  const jobName = job.name || ctx.params.id
 
   try {
     await runHermesCron(profile, ['cron', 'resume', ctx.params.id])
-    const job = scopedJob(findJob(profile, ctx.params.id), profile)
-    ctx.body = { job }
+    const updatedJob = scopedJob(findJob(profile, ctx.params.id), profile)
+    ctx.body = { job: updatedJob }
+    audit.recordEvent({
+      action: 'job.resume',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'job',
+      targetId: ctx.params.id,
+      description: `Resumed job "${jobName}"`,
+    })
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -311,13 +380,54 @@ export async function resume(ctx: Context) {
 
 export async function run(ctx: Context) {
   const profile = resolveProfile(ctx)
-  if (!findJob(profile, ctx.params.id)) return sendJobNotFound(ctx)
+  const job = findJob(profile, ctx.params.id)
+  if (!job) return sendJobNotFound(ctx)
+  if (rejectJobManagement(ctx, profile, ctx.params.id)) return
+  const jobName = job.name || ctx.params.id
 
   try {
     await runHermesCron(profile, ['cron', 'run', ctx.params.id])
-    const job = scopedJob(findJob(profile, ctx.params.id), profile)
-    ctx.body = { job }
+    const updatedJob = scopedJob(findJob(profile, ctx.params.id), profile)
+    ctx.body = { job: updatedJob }
+    audit.recordEvent({
+      action: 'job.run',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'job',
+      targetId: ctx.params.id,
+      description: `Triggered run for job "${jobName}"`,
+    })
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
+}
+
+export async function transferOwner(ctx: Context) {
+  const profile = resolveProfile(ctx)
+  if (!findJob(profile, ctx.params.id)) return sendJobNotFound(ctx)
+
+  const ownerUserId = Number(getBody(ctx).user_id)
+  const owner = Number.isInteger(ownerUserId) ? findUserById(ownerUserId) : null
+  if (!owner || owner.status !== 'active') {
+    ctx.status = 400
+    ctx.body = { error: { message: 'New owner must be an active user' } }
+    return
+  }
+  if (owner.role !== 'super_admin' && !userCanAccessProfile(owner.id, profile)) {
+    ctx.status = 400
+    ctx.body = { error: { message: 'New owner must have access to the job profile' } }
+    return
+  }
+
+  setJobOwner(profile, ctx.params.id, owner.id)
+  const job = findJob(profile, ctx.params.id)
+  ctx.body = { job: job ? visibleJob(ctx, job, profile) : null }
+  audit.recordEvent({
+    action: 'job.transfer_owner',
+    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+    profile,
+    targetType: 'job',
+    targetId: ctx.params.id,
+    description: `Transferred ownership of job "${job?.name || ctx.params.id}"`,
+  })
 }

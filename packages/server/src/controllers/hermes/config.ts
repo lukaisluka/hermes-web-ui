@@ -5,6 +5,9 @@ import { restartGatewayForProfile } from '../../services/hermes/gateway-autostar
 import { saveEnvValueForProfile } from '../../services/config-helpers'
 import { logger } from '../../services/logger'
 import { safeFileStore } from '../../services/safe-file-store'
+import { AuditService } from '../../services/audit'
+
+const audit = AuditService.getInstance()
 
 const PLATFORM_SECTIONS = new Set([
   'telegram', 'discord', 'slack', 'whatsapp', 'matrix',
@@ -239,6 +242,15 @@ export async function updateConfig(ctx: any) {
     }
 
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'config.update',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'config',
+      targetId: profile,
+      description: `Updated Hermes configuration`,
+      meta: { section },
+    })
   } catch (err: any) {
     ctx.status = 500; ctx.body = { error: err.message }
   }
@@ -280,6 +292,14 @@ export async function updateAuxiliaryModels(ctx: any) {
       },
     })
     ctx.body = { success: true, auxiliary }
+    audit.recordEvent({
+      action: 'config.update_auxiliary_models',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'config',
+      targetId: profile,
+      description: `Updated auxiliary model settings`,
+    })
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -346,6 +366,15 @@ export async function updateCredentials(ctx: any) {
     }
 
     ctx.body = { success: true }
+    audit.recordEvent({
+      action: 'config.update_credentials',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'config',
+      targetId: profile,
+      description: `Updated provider credentials`,
+      meta: { platform },
+    })
   } catch (err: any) {
     ctx.status = 500; ctx.body = { error: err.message }
   }
