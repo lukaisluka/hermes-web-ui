@@ -217,14 +217,16 @@ groupChatRoutes.post('/api/hermes/group-chat/rooms', async (ctx) => {
     const room = storage.getRoom(roomId)
     const presentedRoom = room ? presentRoom(ctx, storage, room) : room
     ctx.body = { room: presentedRoom, agents: addedAgents, agentResults }
-    audit.recordEvent({
-        action: 'group_chat_room.create',
-        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-        profile: scopeProfile,
-        targetType: 'group_chat_room',
-        targetId: roomId,
-        description: `Created group chat room "${name}"`,
-    })
+    if (ctx.state?.user) {
+        audit.recordEvent({
+            action: 'group_chat_room.create',
+            actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+            profile: scopeProfile,
+            targetType: 'group_chat_room',
+            targetId: roomId,
+            description: `Created group chat room "${name}"`,
+        })
+    }
 })
 
 // Clone room roles/config without copying the conversation context.
@@ -410,14 +412,16 @@ groupChatRoutes.put('/api/hermes/group-chat/rooms/:roomId/owner', async (ctx) =>
     storage.updateRoomOwner(room.id, owner.id)
     const updatedRoom = storage.getRoom(room.id)
     ctx.body = { room: updatedRoom ? presentRoom(ctx, storage, updatedRoom) : updatedRoom }
-    audit.recordEvent({
-        action: 'group_chat_room.transfer_owner',
-        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-        profile: String(room.profile || '').trim(),
-        targetType: 'group_chat_room',
-        targetId: room.id,
-        description: `Transferred ownership of room "${room.name}"`,
-    })
+    if (ctx.state?.user) {
+        audit.recordEvent({
+            action: 'group_chat_room.transfer_owner',
+            actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+            profile: String(room.profile || '').trim(),
+            targetType: 'group_chat_room',
+            targetId: room.id,
+            description: `Transferred ownership of room "${room.name}"`,
+        })
+    }
 })
 
 // Add agent to room
@@ -471,14 +475,16 @@ groupChatRoutes.post('/api/hermes/group-chat/rooms/:roomId/agents', async (ctx) 
             invited,
         })
         ctx.body = { agent }
-        audit.recordEvent({
-            action: 'group_chat_room.add_agent',
-            actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-            profile: String(room.profile || '').trim(),
-            targetType: 'group_chat_room',
-            targetId: ctx.params.roomId,
-            description: `Added agent "${name || profile}" to room "${room.name}"`,
-        })
+        if (ctx.state?.user) {
+            audit.recordEvent({
+                action: 'group_chat_room.add_agent',
+                actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+                profile: String(room.profile || '').trim(),
+                targetType: 'group_chat_room',
+                targetId: ctx.params.roomId,
+                description: `Added agent "${name || profile}" to room "${room.name}"`,
+            })
+        }
     } catch (err: any) {
         console.error(`[GroupChat] Failed to connect agent ${profile} to room ${ctx.params.roomId}: ${sanitizeAgentConnectReason(err.message)}`)
         ctx.status = 502
@@ -540,14 +546,16 @@ groupChatRoutes.delete('/api/hermes/group-chat/rooms/:roomId/agents/:agentId', a
         agents: storage.getRoomAgents(roomId),
         members: storage.getRoomMembers(roomId),
     }
-    audit.recordEvent({
-        action: 'group_chat_room.remove_agent',
-        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-        profile: String(room.profile || '').trim(),
-        targetType: 'group_chat_room',
-        targetId: roomId,
-        description: `Removed agent "${agent.name || agent.profile}" from room "${room.name}"`,
-    })
+    if (ctx.state?.user) {
+        audit.recordEvent({
+            action: 'group_chat_room.remove_agent',
+            actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+            profile: String(room.profile || '').trim(),
+            targetType: 'group_chat_room',
+            targetId: roomId,
+            description: `Removed agent "${agent.name || agent.profile}" from room "${room.name}"`,
+        })
+    }
 })
 
 // Delete room
@@ -575,14 +583,16 @@ groupChatRoutes.delete('/api/hermes/group-chat/rooms/:roomId', async (ctx) => {
     const roomProfile = String(room.profile || '').trim()
     storage.deleteRoom(roomId)
     ctx.body = { success: true }
-    audit.recordEvent({
-        action: 'group_chat_room.delete',
-        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-        profile: roomProfile,
-        targetType: 'group_chat_room',
-        targetId: roomId,
-        description: `Deleted group chat room "${roomName}"`,
-    })
+    if (ctx.state?.user) {
+        audit.recordEvent({
+            action: 'group_chat_room.delete',
+            actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+            profile: roomProfile,
+            targetType: 'group_chat_room',
+            targetId: roomId,
+            description: `Deleted group chat room "${roomName}"`,
+        })
+    }
 })
 
 // Clear current room context while keeping members, agents, and room config.
@@ -637,14 +647,16 @@ groupChatRoutes.put('/api/hermes/group-chat/rooms/:roomId/config', async (ctx) =
     storage.updateRoomConfig(roomId, { triggerTokens, maxHistoryTokens, tailMessageCount })
     const updatedRoom = storage.getRoom(roomId)
     ctx.body = { room: updatedRoom ? presentRoom(ctx, storage, updatedRoom) : updatedRoom }
-    audit.recordEvent({
-        action: 'group_chat_room.update_config',
-        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-        profile: String(room.profile || '').trim(),
-        targetType: 'group_chat_room',
-        targetId: roomId,
-        description: `Updated config for room "${room.name}"`,
-    })
+    if (ctx.state?.user) {
+        audit.recordEvent({
+            action: 'group_chat_room.update_config',
+            actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+            profile: String(room.profile || '').trim(),
+            targetType: 'group_chat_room',
+            targetId: roomId,
+            description: `Updated config for room "${room.name}"`,
+        })
+    }
 })
 
 // Force compress a room's context

@@ -18,6 +18,7 @@ const { socketHandlers, mockSocket, mockIo } = vi.hoisted(() => {
   return { socketHandlers, mockSocket, mockIo }
 })
 const mockUserCanAccessProfile = vi.hoisted(() => vi.fn())
+const mockFindUserById = vi.hoisted(() => vi.fn())
 
 vi.mock('socket.io-client', () => ({
   io: mockIo,
@@ -32,10 +33,12 @@ vi.mock('../../packages/server/src/middleware/user-auth', () => ({
   isAuthEnabled: vi.fn(async () => false),
   isRegularUser: (user: any) => user?.role === 'user',
   isSuperAdmin: (user: any) => user?.role === 'super_admin',
+  isProfileAdmin: (user: any) => user?.role === 'admin' || user?.role === 'super_admin',
 }))
 
 vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
   findUserByUsername: vi.fn(),
+  findUserById: mockFindUserById,
   getUserAvatar: vi.fn(() => ''),
   userCanAccessProfile: mockUserCanAccessProfile,
 }))
@@ -55,6 +58,7 @@ describe('Group Chat member/agent identity sync', () => {
     vi.clearAllMocks()
     socketHandlers.clear()
     mockUserCanAccessProfile.mockReturnValue(true)
+    mockFindUserById.mockReturnValue(null)
   })
 
   it('uses the persisted group-chat agent id as the runtime agent id and socket user id', async () => {
@@ -265,7 +269,7 @@ describe('Group Chat member/agent identity sync', () => {
 
     expect(storage.getRoomsForProfiles).toHaveBeenCalledWith(['default', 'research'])
     expect(storage.getAllRooms).not.toHaveBeenCalled()
-    expect(ctx.body).toEqual({ rooms: visibleRooms })
+    expect(ctx.body).toEqual({ rooms: [{ ...visibleRooms[0], canManage: false, canAssignOwner: true }] })
   })
 
   it('scopes empty rooms created by regular users to the active profile', async () => {
@@ -285,7 +289,7 @@ describe('Group Chat member/agent identity sync', () => {
     }
     await handler(ctx, async () => {})
 
-    expect(saveRoom).toHaveBeenCalledWith(expect.any(String), 'Standup', 'ABC123', undefined, 'travel')
+    expect(saveRoom).toHaveBeenCalledWith(expect.any(String), 'Standup', 'ABC123', undefined, 'travel', 7)
     expect(ctx.body.room).toMatchObject({ profile: 'travel' })
   })
 
@@ -306,6 +310,69 @@ describe('Group Chat member/agent identity sync', () => {
     expect(saveRoom).not.toHaveBeenCalled()
   })
 
+  it('rejects rooms that mix agents from another authorized profile', async () => {
+    const saveRoom = vi.fn()
+    setGroupChatServer({ getStorage: () => ({ saveRoom }) } as any)
+
+    const handler = routeHandler('/api/hermes/group-chat/rooms', 'POST')
+    const ctx: any = {
+      state: { user: { id: 7, username: 'han', role: 'user', profiles: ['default', 'travel'] }, profile: { name: 'default' } },
+      request: { body: { name: 'Mixed', inviteCode: 'ABC123', agents: [{ profile: 'travel' }] } },
+      status: 200,
+      body: undefined,
+    }
+    await handler(ctx, async () => {})
+
+    expect(ctx.status).toBe(400)
+    expect(saveRoom).not.toHaveBeenCalled()
+  })
+
+  it('shows regular users only rooms they own or joined', async () => {
+    const rooms = [
+      { id: 'owned', profile: 'default', ownerUserId: 7 },
+      { id: 'joined', profile: 'default', ownerUserId: 8 },
+      { id: 'other', profile: 'default', ownerUserId: 8 },
+    ]
+    const storage = {
+      getRoomsForProfiles: vi.fn(() => rooms),
+      getRoomAgents: vi.fn(() => []),
+      isRoomMemberByAuthUserId: vi.fn((roomId: string) => roomId === 'joined'),
+    }
+    setGroupChatServer({ getStorage: () => storage } as any)
+
+    const handler = routeHandler('/api/hermes/group-chat/rooms', 'GET')
+    const ctx: any = {
+      state: { user: { id: 7, username: 'han', role: 'user', profiles: ['default'] } },
+      status: 200,
+      body: undefined,
+    }
+    await handler(ctx, async () => {})
+
+    expect(ctx.body.rooms.map((room: any) => room.id)).toEqual(['owned', 'joined'])
+  })
+
+  it('requires profile administrators to join before reading room messages', async () => {
+    const room = { id: 'room-1', profile: 'default', ownerUserId: 7 }
+    const storage = {
+      getRoom: vi.fn(() => room),
+      getRoomAgents: vi.fn(() => []),
+      isRoomMemberByAuthUserId: vi.fn(() => false),
+    }
+    setGroupChatServer({ getStorage: () => storage } as any)
+
+    const handler = routeHandler('/api/hermes/group-chat/rooms/:roomId', 'GET')
+    const ctx: any = {
+      state: { user: { id: 3, username: 'ops', role: 'admin', profiles: ['default'] } },
+      params: { roomId: 'room-1' },
+      query: {},
+      status: 200,
+      body: undefined,
+    }
+    await handler(ctx, async () => {})
+
+    expect(ctx.status).toBe(403)
+  })
+
   it('keeps room list unrestricted for super admins', async () => {
     const rooms = [{ id: 'room-1', name: 'All', inviteCode: null }]
     const storage = {
@@ -324,7 +391,62 @@ describe('Group Chat member/agent identity sync', () => {
 
     expect(storage.getAllRooms).toHaveBeenCalledOnce()
     expect(storage.getRoomsForProfiles).not.toHaveBeenCalled()
-    expect(ctx.body).toEqual({ rooms })
+    expect(ctx.body).toEqual({ rooms: [{ ...rooms[0], canManage: false, canAssignOwner: true }] })
+  })
+
+  it('rechecks database profile access for direct admin room access', async () => {
+    const room = { id: 'room-1', profile: 'research', ownerUserId: 7 }
+    const storage = {
+      getRoom: vi.fn(() => room),
+      getRoomAgents: vi.fn(() => []),
+      isRoomMemberByAuthUserId: vi.fn(() => true),
+    }
+    setGroupChatServer({ getStorage: () => storage } as any)
+    mockUserCanAccessProfile.mockReturnValue(false)
+
+    const handler = routeHandler('/api/hermes/group-chat/rooms/:roomId', 'GET')
+    const ctx: any = {
+      state: { user: { id: 3, username: 'ops', role: 'admin', profiles: ['research'] } },
+      params: { roomId: 'room-1' },
+      query: {},
+      status: 200,
+      body: undefined,
+    }
+    await handler(ctx, async () => {})
+
+    expect(ctx.status).toBe(403)
+    expect(mockUserCanAccessProfile).toHaveBeenCalledWith(3, 'research')
+  })
+
+  it('freezes ownerless rooms until a profile administrator assigns an eligible owner', async () => {
+    const room = { id: 'room-1', profile: 'default', ownerUserId: null }
+    const updatedRoom = { ...room, ownerUserId: 7 }
+    const storage = {
+      getRoom: vi.fn()
+        .mockReturnValueOnce(room)
+        .mockReturnValueOnce(updatedRoom),
+      getRoomAgents: vi.fn(() => []),
+      updateRoomOwner: vi.fn(),
+    }
+    setGroupChatServer({ getStorage: () => storage } as any)
+    mockFindUserById.mockReturnValue({ id: 7, role: 'user', status: 'active' })
+
+    const handler = routeHandler('/api/hermes/group-chat/rooms/:roomId/owner', 'PUT')
+    const ctx: any = {
+      state: { user: { id: 3, username: 'ops', role: 'admin', profiles: ['default'] } },
+      params: { roomId: 'room-1' },
+      request: { body: { userId: 7 } },
+      status: 200,
+      body: undefined,
+    }
+    await handler(ctx, async () => {})
+
+    expect(storage.updateRoomOwner).toHaveBeenCalledWith('room-1', 7)
+    expect(ctx.body.room).toEqual(expect.objectContaining({
+      ownerUserId: 7,
+      canManage: true,
+      canAssignOwner: true,
+    }))
   })
 
   it('rechecks current profile bindings for regular-user socket room access', () => {

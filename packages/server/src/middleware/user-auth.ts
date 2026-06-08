@@ -223,6 +223,29 @@ export async function requireProfileAdmin(ctx: Context, next: Next): Promise<voi
   await next()
 }
 
+export async function requireTargetProfileAdmin(ctx: Context, next: Next): Promise<void> {
+  const user = ctx.state.user
+  if (!user || !isProfileAdmin(user)) {
+    ctx.status = 403
+    ctx.body = { error: 'Administrator privileges are required' }
+    return
+  }
+
+  const targetProfile = String(ctx.params?.name || '').trim()
+  if (!targetProfile) {
+    ctx.status = 400
+    ctx.body = { error: 'Profile is required' }
+    return
+  }
+  if (!isSuperAdmin(user) && !userCanAccessProfile(user.id, targetProfile)) {
+    ctx.status = 403
+    ctx.body = { error: `Profile "${targetProfile}" is not available for this user` }
+    return
+  }
+
+  await next()
+}
+
 export function resolveRequestedProfile(ctx: Context): string {
   if (ctx.path === '/api/hermes/available-models' && typeof ctx.query.profile !== 'string') {
     return ''

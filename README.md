@@ -4,14 +4,12 @@
 </p>
 
 <p align="center">
-  A full-featured desktop app and web dashboard for <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a>.<br/>
-  Manage AI chat sessions, monitor usage & costs, configure platform channels,<br/>
+  A self-hosted web dashboard for <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a>.<br/>
+  Manage AI chat sessions, monitor usage & costs,<br/>
   schedule cron jobs, browse skills — all from a clean, responsive web interface.
 </p>
 
 <p align="center">
-  <a href="https://github.com/lukaisluka/hermes-web-ui/releases/latest">Download Hermes Studio Desktop</a>
-  ·
   <code>npm install -g hermes-web-ui && hermes-web-ui start</code>
 </p>
 
@@ -48,25 +46,6 @@
 - Session search — Ctrl+K search across the Web UI local session database; read-only Hermes history sessions are not included
 - Profile-aware model selector — discovers models available to the signed-in account through authorized Hermes profiles
 - Per-session model display badge and context token usage
-
-### Platform Channels
-
-Unified configuration for **8 platforms** in one page:
-
-| Platform      | Features                                                               |
-| ------------- | ---------------------------------------------------------------------- |
-| Telegram      | Bot token, mention control, reactions, free-response chats             |
-| Discord       | Bot token, mention, auto-thread, reactions, channel allow/ignore lists |
-| Slack         | Bot token, mention control, bot message handling                       |
-| WhatsApp      | Enable/disable, mention control, mention patterns                      |
-| Matrix        | Access token, homeserver, auto-thread, DM mention threads              |
-| Feishu (Lark) | App ID / Secret, mention control                                       |
-| WeChat        | QR code login (scan in browser, auto-save credentials)                 |
-| WeCom         | Bot ID / Secret                                                        |
-
-- Credential management writes to `~/.hermes/.env`
-- Channel behavior settings write to `~/.hermes/config.yaml`
-- Per-platform configured/unconfigured status detection
 
 ### Usage Analytics
 
@@ -173,21 +152,6 @@ hermes-web-ui reset-default-login
 
 ## Quick Start
 
-### Desktop App (Recommended)
-
-Download the latest **Hermes Studio** desktop installer from
-[GitHub Releases](https://github.com/lukaisluka/hermes-web-ui/releases/latest).
-
-Desktop builds are published for macOS, Windows, and Linux, with separate
-architecture assets where applicable. The desktop app bundles the Web UI
-runtime and stores Hermes Agent data in the native Hermes location:
-
-- Windows: `%LOCALAPPDATA%\hermes` (falls back to `%APPDATA%\hermes`)
-- macOS/Linux: `~/.hermes`
-
-The desktop wrapper stores its own Web UI state separately in
-`~/.hermes-web-ui` unless `HERMES_WEB_UI_HOME` is set.
-
 ### npm
 
 ```bash
@@ -276,9 +240,6 @@ These variables configure Hermes Web UI, its local Hermes runtime integration, a
 | `HERMES_WEB_UI_DISABLE_SKILL_INJECTION` | unset | Skip startup bundled skill injection. Set `1`, `true`, `yes`, or `on` when bundled skills are managed outside Web UI or target skill directories must not be overwritten. |
 | `HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN` | enabled in production | Controls whether Web UI shutdown also stops managed gateway processes. Set `0` or `false` to detach them. |
 | `GATEWAY_HOST` | `127.0.0.1` | Default gateway host written into profile config for legacy gateway compatibility. |
-| `HERMES_WEB_UI_PREVIEW_REPO` | package repository | GitHub repository used by Version Preview. |
-| `HERMES_WEB_UI_PREVIEW_AGENT_BRIDGE_TRANSPORT` | platform default | Version Preview broker transport. Set `tcp` to use loopback TCP for Preview on macOS/Linux; when unset, Preview follows `HERMES_AGENT_BRIDGE_WORKER_TRANSPORT=tcp`. |
-| `HERMES_WEB_UI_PREVIEW_AGENT_BRIDGE_ENDPOINT` | isolated preview endpoint | Directly overrides the Version Preview broker endpoint. |
 | `HERMES_WEB_UI_BACKEND_PORT` | `8648` | Backend port used by the Vite dev proxy. |
 | `HERMES_WEB_UI_FRONTEND_PORT` | `8649` | Frontend Vite dev server port. |
 

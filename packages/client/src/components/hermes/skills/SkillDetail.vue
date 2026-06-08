@@ -16,6 +16,8 @@ const props = defineProps<{
   useCount?: number
   viewCount?: number
   pinned?: boolean
+  description?: string
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +32,14 @@ const viewingFile = ref<string | null>(null)
 const fileLoading = ref(false)
 
 async function loadSkill() {
+  if (props.readOnly) {
+    loading.value = false
+    viewingFile.value = null
+    fileContent.value = ''
+    files.value = []
+    content.value = props.description || ''
+    return
+  }
   loading.value = true
   viewingFile.value = null
   fileContent.value = ''
@@ -95,7 +105,11 @@ async function handlePinToggle() {
   }
 }
 
-watch(() => `${props.category}/${props.skill}`, loadSkill, { immediate: true })
+watch(
+  () => [props.category, props.skill, props.description, props.readOnly],
+  loadSkill,
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -105,7 +119,7 @@ watch(() => `${props.category}/${props.skill}`, loadSkill, { immediate: true })
       <span class="detail-category">{{ category }}</span>
       <span class="detail-separator">/</span>
       <span class="detail-name">{{ skill }}</span>
-      <div class="usage-stats">
+      <div v-if="!readOnly" class="usage-stats">
         <button class="pin-toggle" :class="{ active: pinned }" :disabled="pinLoading" :title="pinned ? t('skills.unpin') : t('skills.pin')" @click="handlePinToggle">
           <svg width="16" height="16" viewBox="0 0 24 24" :fill="pinned ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
         </button>

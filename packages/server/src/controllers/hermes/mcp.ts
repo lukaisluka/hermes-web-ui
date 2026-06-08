@@ -65,15 +65,17 @@ export async function addServer(ctx: Context) {
       return
     }
     ctx.body = await bridgeMcpAction('mcp_server_add', { name: name.trim(), config }, getProfile(ctx))
-    audit.recordEvent({
-      action: 'mcp_server.create',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: getProfile(ctx),
-      targetType: 'mcp_server',
-      targetId: name.trim(),
-      description: `Added MCP server "${name.trim()}"`,
-      meta: { name: name.trim() },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'mcp_server.create',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: getProfile(ctx),
+        targetType: 'mcp_server',
+        targetId: name.trim(),
+        description: `Added MCP server "${name.trim()}"`,
+        meta: { name: name.trim() },
+      })
+    }
   } catch (err: any) {
     ctx.status = 503
     ctx.body = { error: err.message || 'Failed to add MCP server' }
@@ -95,15 +97,17 @@ export async function updateServer(ctx: Context) {
       return
     }
     ctx.body = await bridgeMcpAction('mcp_server_update', { name, config }, getProfile(ctx))
-    audit.recordEvent({
-      action: 'mcp_server.update',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: getProfile(ctx),
-      targetType: 'mcp_server',
-      targetId: name,
-      description: `Updated MCP server "${name}"`,
-      meta: { name },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'mcp_server.update',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: getProfile(ctx),
+        targetType: 'mcp_server',
+        targetId: name,
+        description: `Updated MCP server "${name}"`,
+        meta: { name },
+      })
+    }
   } catch (err: any) {
     ctx.status = 503
     ctx.body = { error: err.message || 'Failed to update MCP server' }
@@ -119,15 +123,17 @@ export async function removeServer(ctx: Context) {
       return
     }
     ctx.body = await bridgeMcpAction('mcp_server_remove', { name }, getProfile(ctx))
-    audit.recordEvent({
-      action: 'mcp_server.delete',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: getProfile(ctx),
-      targetType: 'mcp_server',
-      targetId: name,
-      description: `Removed MCP server "${name}"`,
-      meta: { name },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'mcp_server.delete',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: getProfile(ctx),
+        targetType: 'mcp_server',
+        targetId: name,
+        description: `Removed MCP server "${name}"`,
+        meta: { name },
+      })
+    }
   } catch (err: any) {
     ctx.status = 503
     ctx.body = { error: err.message || 'Failed to remove MCP server' }
@@ -143,15 +149,17 @@ export async function testServer(ctx: Context) {
       return
     }
     ctx.body = await bridgeMcpAction('mcp_server_test', { name }, getProfile(ctx))
-    audit.recordEvent({
-      action: 'mcp_server.test',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: getProfile(ctx),
-      targetType: 'mcp_server',
-      targetId: name,
-      description: `Tested MCP server "${name}" connection`,
-      meta: { name },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'mcp_server.test',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: getProfile(ctx),
+        targetType: 'mcp_server',
+        targetId: name,
+        description: `Tested MCP server "${name}" connection`,
+        meta: { name },
+      })
+    }
   } catch (err: any) {
     ctx.status = 503
     ctx.body = { error: err.message || 'Failed to test MCP server' }
@@ -177,15 +185,17 @@ export async function reloadMcp(ctx: Context) {
     const server = ctx.query.server as string | undefined
     const payload = server ? { server } : {}
     ctx.body = await bridgeMcpAction('mcp_reload', payload, getProfile(ctx))
-    audit.recordEvent({
-      action: 'mcp.reload',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: getProfile(ctx),
-      targetType: 'mcp',
-      targetId: '',
-      description: 'Reloaded MCP configuration',
-      meta: {},
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'mcp.reload',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: getProfile(ctx),
+        targetType: 'mcp',
+        targetId: '',
+        description: 'Reloaded MCP configuration',
+        meta: {},
+      })
+    }
   } catch (err: any) {
     ctx.status = 503
     ctx.body = { error: err.message || 'Failed to reload MCP' }

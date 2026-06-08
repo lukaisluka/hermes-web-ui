@@ -1,5 +1,6 @@
 import Router from '@koa/router'
 import * as ctrl from '../../controllers/hermes/jobs'
+import { requireProfileAdmin } from '../../middleware/user-auth'
 
 export const jobRoutes = new Router()
 
@@ -11,3 +12,4 @@ jobRoutes.delete('/api/hermes/jobs/:id', ctrl.remove)
 jobRoutes.post('/api/hermes/jobs/:id/pause', ctrl.pause)
 jobRoutes.post('/api/hermes/jobs/:id/resume', ctrl.resume)
 jobRoutes.post('/api/hermes/jobs/:id/run', ctrl.run)
+jobRoutes.put('/api/hermes/jobs/:id/owner', requireProfileAdmin, ctrl.transferOwner)

@@ -6,14 +6,15 @@ import { changePassword, changeUsername, fetchCurrentUser, fetchLockedIps, unloc
 import type { LockedIp, UserAvatar } from "@/api/auth";
 import ProfileAvatar from "@/components/hermes/profiles/ProfileAvatar.vue";
 import multiavatar from "@multiavatar/multiavatar";
-import { isStoredProfileAdmin } from "@/api/client";
+import { isStoredSuperAdmin } from "@/api/client";
 
 const { t } = useI18n();
 const message = useMessage();
 
 const username = ref<string | null>(null);
 const loading = ref(false);
-const canManageLockedIps = isStoredProfileAdmin();
+const isSuperAdmin = isStoredSuperAdmin();
+const canManageLockedIps = isSuperAdmin;
 
 // User avatar
 const avatar = ref<UserAvatar | null>(null);
@@ -277,7 +278,7 @@ onMounted(() => {
         <span class="action-label">{{ t("login.passwordLoginConfigured", { username }) }}</span>
         <div class="action-buttons">
           <NButton @click="openChangePasswordModal">{{ t("login.changePassword") }}</NButton>
-          <NButton @click="openChangeUsernameModal">{{ t("login.changeUsername") }}</NButton>
+          <NButton v-if="isSuperAdmin" @click="openChangeUsernameModal">{{ t("login.changeUsername") }}</NButton>
         </div>
       </div>
     </div>

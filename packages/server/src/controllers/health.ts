@@ -48,10 +48,8 @@ let cachedLatestVersion = ''
 /**
  * Whether the periodic npm-registry version check is disabled.
  *
- * Useful when hermes-web-ui is bundled inside a packaged distribution
- * (e.g. a desktop app) where the user can't `npm install -g hermes-web-ui@latest`
- * to upgrade — the "update available" prompt would be misleading and
- * the periodic outbound HTTP request to the npm registry is unnecessary.
+ * Useful for managed deployments where the operator controls upgrades and the
+ * periodic outbound HTTP request to the npm registry is unnecessary.
  *
  * Set HERMES_WEB_UI_DISABLE_UPDATE_CHECK=true (or 1, on, yes) to disable.
  */

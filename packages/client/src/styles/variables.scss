@@ -110,28 +110,6 @@
   --accent-info-rgb: 107, 163, 214;
 }
 
-.comic {
-  // Borders — bold comic outlines
-  --border-color: #1a1a1a;
-  --border-light: #555555;
-  --msg-system-border: #1a1a1a;
-
-  // Comic-specific
-  --font-ui: 'Comic Neue', 'Zen Maru Gothic', 'Gaegu', 'ZCOOL KuaiLe', cursive, sans-serif;
-  font-size-adjust: 0.515;
-  --comic-border-width: 2.5px;
-  --comic-shadow: 3px 3px 0px rgba(0, 0, 0, 0.15);
-}
-
-.dark.comic {
-  // Borders — brighter outlines on dark
-  --border-color: #666666;
-  --border-light: #555555;
-  --msg-system-border: #888888;
-
-  --comic-shadow: 3px 3px 0px rgba(255, 255, 255, 0.08);
-}
-
 // ─── SCSS Variables (delegate to CSS custom properties) ────────
 
 // Backgrounds

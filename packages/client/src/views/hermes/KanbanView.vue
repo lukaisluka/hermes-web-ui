@@ -70,6 +70,10 @@ const boardOptions = computed(() => kanbanStore.activeBoards.map(board => {
   }
 }))
 
+const canArchiveSelectedBoard = computed(() => {
+  return kanbanStore.activeBoards.find(board => board.slug === kanbanStore.selectedBoard)?.can_archive === true
+})
+
 const selectedBoardValue = computed({
   get: () => kanbanStore.selectedBoard,
   set: (value: string) => {
@@ -234,6 +238,7 @@ async function handleArchiveSelectedBoard() {
           {{ t('common.add') }}
         </NButton>
         <NButton
+          v-if="canArchiveSelectedBoard"
           size="small"
           secondary
           :disabled="kanbanStore.selectedBoard === DEFAULT_KANBAN_BOARD"

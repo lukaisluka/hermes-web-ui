@@ -8,6 +8,11 @@ const testState = vi.hoisted(() => ({
   profileDirs: {} as Record<string, string>,
   execFile: vi.fn(),
   listUserProfiles: vi.fn(),
+  findUserById: vi.fn(),
+  userCanAccessProfile: vi.fn(),
+  getJobOwnerId: vi.fn(),
+  setJobOwner: vi.fn(),
+  deleteJobOwner: vi.fn(),
 }))
 
 vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
@@ -17,10 +22,19 @@ vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
 
 vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
   listUserProfiles: testState.listUserProfiles,
+  findUserById: testState.findUserById,
+  userCanAccessProfile: testState.userCanAccessProfile,
 }))
 
 vi.mock('../../packages/server/src/middleware/user-auth', () => ({
   isRegularUser: (user: any) => user?.role === 'user',
+  isProfileAdmin: (user: any) => user?.role === 'admin' || user?.role === 'super_admin',
+}))
+
+vi.mock('../../packages/server/src/db/hermes/job-ownership-store', () => ({
+  getJobOwnerId: testState.getJobOwnerId,
+  setJobOwner: testState.setJobOwner,
+  deleteJobOwner: testState.deleteJobOwner,
 }))
 
 vi.mock('../../packages/server/src/services/hermes/hermes-path', () => ({
@@ -34,7 +48,7 @@ vi.mock('child_process', () => ({
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-import { list, update } from '../../packages/server/src/controllers/hermes/jobs'
+import { list, transferOwner, update } from '../../packages/server/src/controllers/hermes/jobs'
 
 function createMockCtx(overrides: Record<string, any> = {}) {
   const ctx: any = {
@@ -66,6 +80,9 @@ describe('Hermes jobs controller', () => {
     testState.profileDir = tempDir
     testState.profileDirs = {}
     testState.listUserProfiles.mockReturnValue([])
+    testState.findUserById.mockReturnValue(null)
+    testState.userCanAccessProfile.mockReturnValue(false)
+    testState.getJobOwnerId.mockReturnValue(null)
     testState.execFile.mockImplementation((_bin, _args, _opts, cb) => {
       cb(null, { stdout: '', stderr: '' })
     })
@@ -165,5 +182,66 @@ describe('Hermes jobs controller', () => {
       { id: 'job-default', profile: 'default' },
       { id: 'job-travel', profile: 'travel' },
     ])
+  })
+
+  it('allows regular users to manage only jobs they own', async () => {
+    const cronDir = join(tempDir, 'cron')
+    mkdirSync(cronDir, { recursive: true })
+    writeFileSync(join(cronDir, 'jobs.json'), JSON.stringify({
+      jobs: [{ job_id: 'abc123abc123', name: 'daily' }],
+    }))
+
+    testState.getJobOwnerId.mockReturnValue(8)
+    const deniedCtx = createMockCtx({
+      state: { user: { id: 7, role: 'user' }, profile: { name: 'default' } },
+    })
+    await update(deniedCtx)
+
+    expect(deniedCtx.status).toBe(403)
+    expect(testState.execFile).not.toHaveBeenCalled()
+
+    testState.getJobOwnerId.mockReturnValue(7)
+    const allowedCtx = createMockCtx({
+      state: { user: { id: 7, role: 'user' }, profile: { name: 'default' } },
+    })
+    await update(allowedCtx)
+
+    expect(allowedCtx.status).toBe(200)
+    expect(testState.execFile).toHaveBeenCalled()
+  })
+
+  it('allows profile admins to manage ownerless jobs', async () => {
+    const cronDir = join(tempDir, 'cron')
+    mkdirSync(cronDir, { recursive: true })
+    writeFileSync(join(cronDir, 'jobs.json'), JSON.stringify({
+      jobs: [{ job_id: 'abc123abc123', name: 'daily' }],
+    }))
+
+    const ctx = createMockCtx({
+      state: { user: { id: 3, role: 'admin' }, profile: { name: 'default' } },
+    })
+    await update(ctx)
+
+    expect(ctx.status).toBe(200)
+    expect(testState.execFile).toHaveBeenCalled()
+  })
+
+  it('allows profile admins to transfer a job to an active profile member', async () => {
+    const cronDir = join(tempDir, 'cron')
+    mkdirSync(cronDir, { recursive: true })
+    writeFileSync(join(cronDir, 'jobs.json'), JSON.stringify({
+      jobs: [{ job_id: 'abc123abc123', name: 'daily' }],
+    }))
+    testState.findUserById.mockReturnValue({ id: 7, role: 'user', status: 'active' })
+    testState.userCanAccessProfile.mockReturnValue(true)
+
+    const ctx = createMockCtx({
+      state: { user: { id: 3, role: 'admin' }, profile: { name: 'default' } },
+      request: { body: { user_id: 7 } },
+    })
+    await transferOwner(ctx)
+
+    expect(testState.setJobOwner).toHaveBeenCalledWith('default', 'abc123abc123', 7)
+    expect(ctx.body.job).toEqual(expect.objectContaining({ id: 'abc123abc123', profile: 'default' }))
   })
 })

@@ -29,6 +29,11 @@ const mockGetSessionDetail = vi.hoisted(() => vi.fn())
 const mockGetExactSessionDetail = vi.hoisted(() => vi.fn())
 const mockFindLatestExactSessionId = vi.hoisted(() => vi.fn())
 const mockListUserProfiles = vi.hoisted(() => vi.fn())
+const mockGetKanbanBoardScope = vi.hoisted(() => vi.fn())
+const mockGetKanbanTaskOwner = vi.hoisted(() => vi.fn())
+const mockSetKanbanBoardScope = vi.hoisted(() => vi.fn())
+const mockSetKanbanTaskCreator = vi.hoisted(() => vi.fn())
+const mockSetKanbanTaskDispatcher = vi.hoisted(() => vi.fn())
 
 vi.mock('fs/promises', () => ({
   readFile: mockReadFile,
@@ -80,7 +85,16 @@ vi.mock('../../packages/server/src/db/hermes/users-store', () => ({
   listUserProfiles: mockListUserProfiles,
 }))
 
+vi.mock('../../packages/server/src/db/hermes/kanban-ownership-store', () => ({
+  getKanbanBoardScope: mockGetKanbanBoardScope,
+  getKanbanTaskOwner: mockGetKanbanTaskOwner,
+  setKanbanBoardScope: mockSetKanbanBoardScope,
+  setKanbanTaskCreator: mockSetKanbanTaskCreator,
+  setKanbanTaskDispatcher: mockSetKanbanTaskDispatcher,
+}))
+
 vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isProfileAdmin: (user: any) => user?.role === 'admin' || user?.role === 'super_admin',
   isRegularUser: (user: any) => user?.role === 'user',
   isSuperAdmin: (user: any) => user?.role === 'super_admin',
 }))
@@ -102,6 +116,8 @@ describe('kanban controller', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockListUserProfiles.mockReturnValue([{ profile_name: 'research' }])
+    mockGetKanbanBoardScope.mockReturnValue(null)
+    mockGetKanbanTaskOwner.mockReturnValue(null)
   })
 
   it('lists boards and tasks with explicit/default board context', async () => {
@@ -156,7 +172,7 @@ describe('kanban controller', () => {
     const state = { user: { id: 7, role: 'admin' }, profile: { name: 'research' } }
     const listCtx = ctx({ state, query: { board: 'default', includeArchived: 'true' } })
     await ctrl.list(listCtx)
-    expect(listCtx.body).toEqual({ tasks: [tasks[0]] })
+    expect(listCtx.body).toEqual({ tasks: [{ ...tasks[0], can_manage: true }] })
 
     const statsCtx = ctx({ state, query: { board: 'default' } })
     await ctrl.stats(statsCtx)
@@ -182,7 +198,10 @@ describe('kanban controller', () => {
     const state = { user: { id: 7, role: 'admin' }, profile: { name: 'research' } }
     const listCtx = ctx({ state, query: { board: 'default', includeArchived: 'true' } })
     await ctrl.list(listCtx)
-    expect(listCtx.body).toEqual({ tasks: [tasks[0], tasks[1]] })
+    expect(listCtx.body).toEqual({ tasks: [
+      { ...tasks[0], can_manage: true },
+      { ...tasks[1], can_manage: true },
+    ] })
 
     const statsCtx = ctx({ state, query: { board: 'default' } })
     await ctrl.stats(statsCtx)
@@ -211,12 +230,77 @@ describe('kanban controller', () => {
     const createCtx = ctx({ state, query: { board: 'default' }, request: { body: { title: 'Ship it' } } })
     await ctrl.create(createCtx)
     expect(mockCreateTask).toHaveBeenCalledWith('Ship it', { board: 'default', body: undefined, assignee: 'research', priority: undefined, tenant: undefined })
-    expect(createCtx.body).toEqual({ task: { id: 'task-1', assignee: 'research' } })
+    expect(createCtx.body).toEqual({ task: { id: 'task-1', assignee: 'research', can_manage: true } })
 
     const assignCtx = ctx({ state, query: { board: 'default' }, params: { id: 'task-1' }, request: { body: { profile: 'travel' } } })
     await ctrl.assign(assignCtx)
     expect(assignCtx.status).toBe(403)
     expect(mockAssignTask).not.toHaveBeenCalled()
+  })
+
+  it('scopes new boards to the active profile and filters boards outside the user profile set', async () => {
+    mockListBoards.mockResolvedValue([{ slug: 'default' }, { slug: 'research' }, { slug: 'travel' }])
+    mockGetKanbanBoardScope.mockImplementation((slug: string) => {
+      if (slug === 'research') return { board_slug: slug, profile: 'research', creator_user_id: 7 }
+      if (slug === 'travel') return { board_slug: slug, profile: 'travel', creator_user_id: 8 }
+      return null
+    })
+    mockCreateBoard.mockResolvedValue({ slug: 'new-board' })
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'research' } }
+
+    const listCtx = ctx({ state })
+    await ctrl.listBoards(listCtx)
+    expect(listCtx.body.boards.map((board: any) => board.slug)).toEqual(['default', 'research'])
+
+    const createCtx = ctx({ state, request: { body: { slug: 'new-board' } } })
+    await ctrl.createBoard(createCtx)
+    expect(mockSetKanbanBoardScope).toHaveBeenCalledWith('new-board', 'research', 7)
+    expect(createCtx.body.board).toMatchObject({ slug: 'new-board', profile: 'research', can_archive: false })
+  })
+
+  it('records task creators and dispatchers', async () => {
+    mockCreateTask.mockResolvedValue({ id: 'task-1', assignee: 'research' })
+    mockListTasks.mockResolvedValue([{ id: 'task-1', assignee: 'research', status: 'ready' }])
+    mockDispatch.mockResolvedValue({ spawned: 1 })
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'research' } }
+
+    await ctrl.create(ctx({ state, query: { board: 'default' }, request: { body: { title: 'Ship' } } }))
+    expect(mockSetKanbanTaskCreator).toHaveBeenCalledWith('default', 'task-1', 7)
+
+    await ctrl.dispatch(ctx({ state, query: { board: 'default' }, request: { body: {} } }))
+    expect(mockSetKanbanTaskDispatcher).toHaveBeenCalledWith('default', 'task-1', 7)
+  })
+
+  it('allows the dispatcher to terminate work after the task moves to another profile', async () => {
+    mockGetKanbanTaskOwner.mockReturnValue({
+      board_slug: 'default',
+      task_id: 'task-1',
+      creator_user_id: 8,
+      dispatcher_user_id: 7,
+    })
+    mockReclaimTask.mockResolvedValue({ ok: true })
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'research' } }
+    const reclaimCtx = ctx({
+      state,
+      query: { board: 'default' },
+      params: { id: 'task-1' },
+      request: { body: {} },
+    })
+
+    await ctrl.reclaim(reclaimCtx)
+
+    expect(mockGetTask).not.toHaveBeenCalled()
+    expect(mockReclaimTask).toHaveBeenCalledWith('task-1', { board: 'default', reason: undefined })
+  })
+
+  it('rejects regular-user access to unscoped legacy boards other than default', async () => {
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'research' } }
+    const listCtx = ctx({ state, query: { board: 'legacy-private' } })
+
+    await ctrl.list(listCtx)
+
+    expect(listCtx.status).toBe(403)
+    expect(mockListTasks).not.toHaveBeenCalled()
   })
 
   it('rejects regular-user mutations against tasks assigned to unauthorized profiles', async () => {

@@ -105,6 +105,46 @@ describe('MCP Controller', () => {
       expect(ctx.status).toBe(503)
       expect(ctx.body).toEqual({ error: 'bridge down' })
     })
+
+    it('returns redacted status only to regular users', async () => {
+      mcpListMock.mockResolvedValue({
+        ...SAMPLE_SERVERS_RESPONSE,
+        servers: [{
+          ...SAMPLE_SERVERS_RESPONSE.servers[0],
+          error: 'spawn npx ENOENT at /private/internal/path',
+          raw_config: {
+            ...SAMPLE_SERVERS_RESPONSE.servers[0].raw_config,
+            env: { GITHUB_TOKEN: 'secret' },
+          },
+        }],
+      })
+      const { listServers } = await import('../../packages/server/src/controllers/hermes/mcp')
+      const ctx = createCtx({
+        state: {
+          profile: { name: 'test-profile' },
+          user: { id: 7, role: 'user' },
+        },
+      })
+
+      await listServers(ctx)
+
+      expect(ctx.body).toEqual({
+        ok: true,
+        servers: [{
+          name: 'github',
+          transport: 'stdio',
+          connected: true,
+          tools: 26,
+          tools_registered: 3,
+          tool_names: [],
+          tool_names_registered: [],
+          error: 'Unavailable',
+          raw_config: { enabled: true },
+          tool_details: [],
+        }],
+        total_tools: 3,
+      })
+    })
   })
 
   describe('addServer', () => {

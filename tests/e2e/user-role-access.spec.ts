@@ -10,10 +10,10 @@ test('regular users keep collaboration access while management routes stay hidde
   await expect(page).toHaveURL(/#\/hermes\/chat$/)
 
   const sidebar = page.locator('aside.sidebar')
-  for (const allowed of [/^Chat$/, /^Group Chat/, /^Jobs$/, /^Kanban$/, /^Files$/, /^Usage$/, /^Skills Usage$/, /^Settings$/]) {
+  for (const allowed of [/^Chat$/, /^Group Chat/, /^Jobs$/, /^Kanban$/, /^Skills$/, /^MCP$/, /^Files$/, /^Usage$/, /^Skills Usage$/, /^Settings$/]) {
     await expect(sidebar.getByRole('link', { name: allowed })).toBeVisible()
   }
-  for (const forbidden of ['Models', 'Channels', 'Skills', 'Plugins', 'MCP', 'Memory', 'Logs', 'Performance', 'Terminal', 'Coding Agents', 'Profiles']) {
+  for (const forbidden of ['Models', 'Channels', 'Plugins', 'Memory', 'Logs', 'Performance', 'Terminal', 'Coding Agents', 'Profiles']) {
     await expect(sidebar.getByRole('link', { name: new RegExp(`^${forbidden}$`) })).toHaveCount(0)
   }
 

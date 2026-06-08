@@ -694,15 +694,17 @@ export async function updateExternalDirs(ctx: any) {
       return config
     })
     ctx.body = { success: true, dirs: deduped }
-    audit.recordEvent({
-      action: 'skill.update_external_dirs',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: requestedProfile(ctx),
-      targetType: 'skill',
-      targetId: '',
-      description: 'Updated external skill directories',
-      meta: { dirs: deduped },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'skill.update_external_dirs',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: requestedProfile(ctx),
+        targetType: 'skill',
+        targetId: '',
+        description: 'Updated external skill directories',
+        meta: { dirs: deduped },
+      })
+    }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -727,15 +729,17 @@ export async function toggle(ctx: any) {
       return config
     })
     ctx.body = { success: true }
-    audit.recordEvent({
-      action: 'skill.toggle',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: requestedProfile(ctx),
-      targetType: 'skill',
-      targetId: name,
-      description: `Toggled skill "${name}" (${enabled ? 'enabled' : 'disabled'})`,
-      meta: { skill: name, enabled },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'skill.toggle',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: requestedProfile(ctx),
+        targetType: 'skill',
+        targetId: name,
+        description: `Toggled skill "${name}" (${enabled ? 'enabled' : 'disabled'})`,
+        meta: { skill: name, enabled },
+      })
+    }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -833,15 +837,17 @@ export async function pin_(ctx: any) {
   try {
     await updatePinnedSkill(requestSkillsDir(ctx), name, pinned)
     ctx.body = { success: true }
-    audit.recordEvent({
-      action: 'skill.pin',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: requestedProfile(ctx),
-      targetType: 'skill',
-      targetId: name,
-      description: `${pinned ? 'Pinned' : 'Unpinned'} skill "${name}"`,
-      meta: { skill: name, pinned },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'skill.pin',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: requestedProfile(ctx),
+        targetType: 'skill',
+        targetId: name,
+        description: `${pinned ? 'Pinned' : 'Unpinned'} skill "${name}"`,
+        meta: { skill: name, pinned },
+      })
+    }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -952,15 +958,17 @@ export async function deleteSkill(ctx: any) {
     } catch { /* config cleanup is best-effort */ }
 
     ctx.body = { success: true }
-    audit.recordEvent({
-      action: 'skill.delete',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: requestedProfile(ctx),
-      targetType: 'skill',
-      targetId: name,
-      description: `Deleted skill "${name}"`,
-      meta: { category, skill: name },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'skill.delete',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: requestedProfile(ctx),
+        targetType: 'skill',
+        targetId: name,
+        description: `Deleted skill "${name}"`,
+        meta: { category, skill: name },
+      })
+    }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -1217,15 +1225,17 @@ export async function importSkill(ctx: any) {
     }
 
     ctx.body = { success: true, name: skillName }
-    audit.recordEvent({
-      action: 'skill.import',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile: requestedProfile(ctx),
-      targetType: 'skill',
-      targetId: skillName,
-      description: `Imported skill "${skillName}"`,
-      meta: { url: ctx.request.body?.url ?? '', skillName },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'skill.import',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: requestedProfile(ctx),
+        targetType: 'skill',
+        targetId: skillName,
+        description: `Imported skill "${skillName}"`,
+        meta: { url: ctx.request.body?.url ?? '', skillName },
+      })
+    }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }

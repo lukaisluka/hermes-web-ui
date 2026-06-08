@@ -3,6 +3,8 @@ import { readdir, stat, readFile } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { getActiveProfileName, getProfileDir } from '../../services/hermes/hermes-profile'
+import { getJobOwnerId } from '../../db/hermes/job-ownership-store'
+import { isProfileAdmin, isRegularUser } from '../../middleware/user-auth'
 
 const SYNTHETIC_RUN_FILE = '__scheduler_metadata__.md'
 
@@ -18,6 +20,19 @@ function getCronOutputDir(profile: string): string {
 function getCronJobsFile(profile: string): string {
   const profileDir = getProfileDir(profile)
   return join(profileDir, 'cron', 'jobs.json')
+}
+
+function canReadJobOutput(ctx: Context, profile: string, jobId: string): boolean {
+  const user = ctx.state?.user
+  if (!user || isProfileAdmin(user)) return true
+  return !isRegularUser(user) || getJobOwnerId(profile, jobId) === user.id
+}
+
+function rejectJobOutputAccess(ctx: Context, profile: string, jobId: string): boolean {
+  if (canReadJobOutput(ctx, profile, jobId)) return false
+  ctx.status = 403
+  ctx.body = { error: 'Only the job owner or a profile administrator can read execution output' }
+  return true
 }
 
 export interface RunEntry {
@@ -189,11 +204,20 @@ export async function listRuns(ctx: Context) {
   const cronOutput = getCronOutputDir(profile)
 
   try {
+    if (jobId && rejectJobOutputAccess(ctx, profile, jobId)) return
+    const jobs = await readCronJobs(profile)
+    const readableJobIds = isRegularUser(ctx.state?.user)
+      ? new Set(jobs.map(getJobId).filter((id): id is string => Boolean(id && canReadJobOutput(ctx, profile, id))))
+      : null
     const runs: RunEntry[] = []
 
     if (existsSync(cronOutput)) {
       const dirs = await readdir(cronOutput)
-      const targetDirs = jobId ? dirs.filter(d => d === jobId) : dirs
+      const targetDirs = jobId
+        ? dirs.filter(d => d === jobId)
+        : readableJobIds
+          ? dirs.filter(dir => readableJobIds.has(dir))
+          : dirs
 
       for (const dir of targetDirs) {
         const dirPath = join(cronOutput, dir)
@@ -224,8 +248,14 @@ export async function listRuns(ctx: Context) {
       }
     }
 
-    const jobs = await readCronJobs(profile)
-    const targetJobs = jobId ? jobs.filter(job => getJobId(job) === jobId) : jobs
+    const targetJobs = jobId
+      ? jobs.filter(job => getJobId(job) === jobId)
+      : readableJobIds
+        ? jobs.filter(job => {
+            const id = getJobId(job)
+            return Boolean(id && readableJobIds.has(id))
+          })
+        : jobs
     for (const job of targetJobs) {
       const id = getJobId(job)
       if (!id) continue
@@ -253,6 +283,7 @@ export async function readRun(ctx: Context) {
     ctx.body = { error: 'jobId and fileName are required' }
     return
   }
+  if (rejectJobOutputAccess(ctx, profile, jobId)) return
 
   // Prevent path traversal
   if (

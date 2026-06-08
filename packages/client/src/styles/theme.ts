@@ -2,7 +2,6 @@ import type { GlobalThemeOverrides } from 'naive-ui'
 
 const uiFont = "'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif"
 const monoFont = "'JetBrains Mono', 'SFMono-Regular', 'Cascadia Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace"
-const comicFont = "'Comic Neue', 'Zen Maru Gothic', 'Gaegu', 'ZCOOL KuaiLe', cursive, sans-serif"
 
 export const lightThemeOverrides: GlobalThemeOverrides = {
   common: {
@@ -150,14 +149,6 @@ export const darkThemeOverrides: GlobalThemeOverrides = {
   },
 }
 
-export function getThemeOverrides(isDark: boolean, isComic?: boolean): GlobalThemeOverrides {
-  const base = isDark ? darkThemeOverrides : lightThemeOverrides
-  if (!isComic) return base
-  return {
-    ...base,
-    common: {
-      ...base.common!,
-      fontFamily: comicFont,
-    },
-  }
+export function getThemeOverrides(isDark: boolean): GlobalThemeOverrides {
+  return isDark ? darkThemeOverrides : lightThemeOverrides
 }

@@ -92,8 +92,6 @@ def _title_user_message(message: Any) -> str:
 def _hidden_subprocess_kwargs() -> dict[str, Any]:
     if os.name != "nt":
         return {}
-    if os.environ.get("HERMES_DESKTOP", "").strip().lower() != "true":
-        return {}
     create_no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0) or 0x08000000
     kwargs: dict[str, Any] = {"creationflags": create_no_window}
     try:
@@ -128,16 +126,13 @@ def _add_hidden_process_options(kwargs: dict[str, Any], create_no_window: int) -
 
 
 def _install_windows_hidden_subprocess_defaults() -> None:
-    """Hide console windows for subprocesses launched inside desktop bridge runs.
+    """Hide console windows for subprocesses launched inside bridge runs.
 
-    The desktop bridge itself must keep stdout/stderr pipes for readiness and
-    worker handshakes, so it runs under python.exe. On Windows that means any
-    nested console executable, including git.exe from context expansion, can
-    flash a window unless the child process is created with CREATE_NO_WINDOW.
+    The bridge must keep stdout/stderr pipes for readiness and worker handshakes.
+    On Windows, nested console executables can flash a window unless the child
+    process is created with CREATE_NO_WINDOW.
     """
     if os.name != "nt":
-        return
-    if os.environ.get("HERMES_DESKTOP", "").strip().lower() != "true":
         return
     if getattr(subprocess, "_hermes_hidden_defaults_installed", False):
         return

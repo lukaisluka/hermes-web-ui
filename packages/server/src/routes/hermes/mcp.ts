@@ -4,7 +4,7 @@ import { requireProfileAdmin } from '../../middleware/user-auth'
 
 export const mcpRoutes = new Router()
 
-mcpRoutes.get('/api/hermes/mcp/servers', requireProfileAdmin, ctrl.listServers)
+mcpRoutes.get('/api/hermes/mcp/servers', ctrl.listServers)
 mcpRoutes.post('/api/hermes/mcp/servers', requireProfileAdmin, ctrl.addServer)
 mcpRoutes.patch('/api/hermes/mcp/servers/:name', requireProfileAdmin, ctrl.updateServer)
 mcpRoutes.delete('/api/hermes/mcp/servers/:name', requireProfileAdmin, ctrl.removeServer)

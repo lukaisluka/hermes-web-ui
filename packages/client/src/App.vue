@@ -12,14 +12,14 @@ import SessionSearchModal from '@/components/hermes/chat/SessionSearchModal.vue'
 import AuthEventListener from '@/components/auth/AuthEventListener.vue'
 import DefaultCredentialPrompt from '@/components/auth/DefaultCredentialPrompt.vue'
 
-const { isDark, isComic } = useTheme()
+const { isDark } = useTheme()
 const { t } = useI18n()
 const appStore = useAppStore()
 const route = useRoute()
 const router = useRouter()
 const ready = ref(false)
 
-const themeOverrides = computed(() => getThemeOverrides(isDark.value, isComic.value))
+const themeOverrides = computed(() => getThemeOverrides(isDark.value))
 const naiveTheme = computed(() => isDark.value ? darkTheme : null)
 
 const isLoginPage = computed(() => route.name === 'login')

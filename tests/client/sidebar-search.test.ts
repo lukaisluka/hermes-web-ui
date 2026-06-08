@@ -9,14 +9,10 @@ const mockAppStore = vi.hoisted(() => ({
   sidebarCollapsed: false,
   connected: true,
   serverVersion: 'test',
-  latestVersion: '',
-  updateAvailable: false,
   clientOutdated: false,
-  updating: false,
   toggleSidebar: vi.fn(),
   toggleSidebarCollapsed: vi.fn(),
   closeSidebar: vi.fn(),
-  doUpdate: vi.fn(),
   reloadClient: vi.fn(),
 }))
 
@@ -113,7 +109,6 @@ describe('AppSidebar search entry', () => {
     openSessionSearchMock.mockClear()
     mockAppStore.serverVersion = 'test'
     mockAppStore.latestVersion = ''
-    mockAppStore.updateAvailable = false
     mockAppStore.clientOutdated = false
     mockAppStore.updating = false
     mockAppStore.sidebarCollapsed = false
@@ -222,15 +217,15 @@ describe('AppSidebar search entry', () => {
       'sidebar.files',
       'sidebar.usage',
       'sidebar.skillsUsage',
+      'sidebar.skills',
+      'sidebar.mcp',
       'sidebar.settings',
     ]) {
       expect(itemLabels.some(label => label.startsWith(allowed))).toBe(true)
     }
     for (const forbidden of [
       'sidebar.channels',
-      'sidebar.skills',
       'sidebar.plugins',
-      'sidebar.mcp',
       'sidebar.memory',
       'sidebar.models',
       'sidebar.logs',
@@ -240,37 +235,6 @@ describe('AppSidebar search entry', () => {
     ]) {
       expect(itemLabels).not.toContain(forbidden)
     }
-  })
-
-  it('shows the update button only to super admins', () => {
-    mockAppStore.updateAvailable = true
-    mockAppStore.latestVersion = '0.6.11'
-
-    setRole('admin')
-    const adminWrapper = mount(AppSidebar, {
-      global: {
-        stubs: {
-          ProfileSelector: true,
-          ModelSelector: true,
-          LanguageSwitch: true,
-          ThemeSwitch: true,
-        },
-      },
-    })
-    expect(adminWrapper.text()).not.toContain('sidebar.updateVersion')
-
-    setRole('super_admin')
-    const superAdminWrapper = mount(AppSidebar, {
-      global: {
-        stubs: {
-          ProfileSelector: true,
-          ModelSelector: true,
-          LanguageSwitch: true,
-          ThemeSwitch: true,
-        },
-      },
-    })
-    expect(superAdminWrapper.text()).toContain('sidebar.updateVersion')
   })
 
   it('fully reloads the app when logging out to clear account-scoped state', async () => {

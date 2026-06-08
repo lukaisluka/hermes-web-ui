@@ -7,7 +7,6 @@ import {
   removeCustomModel as deletePersistedCustomModel,
   updateDefaultModel,
   updateModelVisibility,
-  triggerUpdate,
   updateModelAlias,
   type AvailableModelGroup,
   type AvailableModelsResponse,
@@ -25,15 +24,12 @@ const MODELS_CACHE_TTL_MS = 30000
 
 export const useAppStore = defineStore('app', () => {
   const sidebarOpen = ref(false)
-  // Desktop-only collapsed state (icon-rail mode). Persisted to localStorage.
+  // Wide-layout collapsed state (icon-rail mode). Persisted to localStorage.
   const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1')
 
   const connected = ref(false)
   const serverVersion = ref(WEB_UI_VERSION)
-  const latestVersion = ref('')
-  const updateAvailable = ref(false)
   const clientOutdated = ref(false)
-  const updating = ref(false)
   const modelGroups = ref<AvailableModelGroup[]>([])
   const profileModelGroups = ref<ProfileAvailableModels[]>([])
   const selectedModel = ref('')
@@ -51,31 +47,12 @@ export const useAppStore = defineStore('app', () => {
   let modelsLoadPromise: Promise<void> | null = null
   let modelsLastRequestedAt = 0
 
-  async function doUpdate(): Promise<boolean> {
-    updating.value = true
-    try {
-      const res = await triggerUpdate()
-      if (res.success) {
-        updateAvailable.value = false
-        await checkConnection()
-      }
-      return res.success
-    } catch (err) {
-      console.error('Failed to update Hermes Web UI:', err)
-      return false
-    } finally {
-      updating.value = false
-    }
-  }
-
   async function checkConnection() {
     try {
       const res = await checkHealth()
       connected.value = res.status === 'ok'
       if (res.webui_version) serverVersion.value = res.webui_version
       clientOutdated.value = !!res.webui_version && res.webui_version !== WEB_UI_VERSION
-      if (res.webui_latest) latestVersion.value = res.webui_latest
-      updateAvailable.value = !!res.webui_update_available
       if (res.node_version) nodeVersion.value = res.node_version
     } catch {
       connected.value = false
@@ -329,12 +306,8 @@ export const useAppStore = defineStore('app', () => {
     toggleSidebarCollapsed,
     connected,
     serverVersion,
-    latestVersion,
     nodeVersion,
-    updateAvailable,
     clientOutdated,
-    updating,
-    doUpdate,
     reloadClient,
     modelGroups,
     profileModelGroups,

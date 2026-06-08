@@ -21,12 +21,6 @@ npm ci --ignore-scripts
 npm rebuild node-pty
 ```
 
-Desktop package dependencies are separate:
-
-```bash
-npm ci --prefix packages/desktop --no-audit --no-fund
-```
-
 ## Isolated Runtime
 
 Use per-worktree state and ports to avoid colliding with a running local app:

@@ -6,11 +6,21 @@ import { tmpdir } from 'os'
 const profileDirState = vi.hoisted(() => ({
   value: '',
   dirs: {} as Record<string, string>,
+  getJobOwnerId: vi.fn(),
 }))
 
 vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
   getActiveProfileName: () => 'default',
   getProfileDir: (profile: string) => profileDirState.dirs[profile] || profileDirState.value,
+}))
+
+vi.mock('../../packages/server/src/db/hermes/job-ownership-store', () => ({
+  getJobOwnerId: profileDirState.getJobOwnerId,
+}))
+
+vi.mock('../../packages/server/src/middleware/user-auth', () => ({
+  isProfileAdmin: (user: any) => user?.role === 'admin' || user?.role === 'super_admin',
+  isRegularUser: (user: any) => user?.role === 'user',
 }))
 
 function createCtx(overrides: Record<string, any> = {}) {
@@ -34,6 +44,8 @@ describe('Hermes cron history controller', () => {
     vi.resetModules()
     profileDirState.value = mkdtempSync(join(tmpdir(), 'hwui-cron-history-'))
     profileDirState.dirs = { default: profileDirState.value }
+    profileDirState.getJobOwnerId.mockReset()
+    profileDirState.getJobOwnerId.mockReturnValue(null)
   })
 
   afterEach(() => {
@@ -219,5 +231,45 @@ describe('Hermes cron history controller', () => {
     expect(ctx.status).toBe(200)
     expect(ctx.body.content).toContain('Scheduler run recorded')
     expect(ctx.body.content).toContain('`x')
+  })
+
+  it('allows regular users to read execution output only for jobs they own', async () => {
+    writeJobs([
+      { id: 'owned-job', name: 'Owned', last_run_at: '2026-05-05T07:00:00+00:00' },
+      { id: 'other-job', name: 'Other', last_run_at: '2026-05-05T08:00:00+00:00' },
+    ])
+    profileDirState.getJobOwnerId.mockImplementation((_profile: string, jobId: string) => (
+      jobId === 'owned-job' ? 7 : 8
+    ))
+
+    const { listRuns, readRun } = await import('../../packages/server/src/controllers/hermes/cron-history')
+    const state = { user: { id: 7, role: 'user' }, profile: { name: 'default' } }
+
+    const listCtx = createCtx({ state })
+    await listRuns(listCtx)
+    expect(listCtx.body.runs.map((run: any) => run.jobId)).toEqual(['owned-job'])
+
+    const deniedCtx = createCtx({
+      state,
+      params: { jobId: 'other-job', fileName: '__scheduler_metadata__.md' },
+    })
+    await readRun(deniedCtx)
+    expect(deniedCtx.status).toBe(403)
+  })
+
+  it('allows profile admins to read execution output for ownerless jobs', async () => {
+    writeJobs([
+      { id: 'legacy-job', name: 'Legacy', last_run_at: '2026-05-05T07:00:00+00:00' },
+    ])
+
+    const { listRuns } = await import('../../packages/server/src/controllers/hermes/cron-history')
+    const ctx = createCtx({
+      state: { user: { id: 3, role: 'admin' }, profile: { name: 'default' } },
+      query: { jobId: 'legacy-job' },
+    })
+
+    await listRuns(ctx)
+
+    expect(ctx.body.runs).toHaveLength(1)
   })
 })

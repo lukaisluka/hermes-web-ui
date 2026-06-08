@@ -7,11 +7,14 @@ export interface RoomInfo {
     id: string
     name: string
     profile?: string | null
+    ownerUserId?: number | null
     inviteCode: string | null
     triggerTokens?: number
     maxHistoryTokens?: number
     tailMessageCount?: number
     totalTokens?: number
+    canManage?: boolean
+    canAssignOwner?: boolean
 }
 
 export interface RoomAgent {
@@ -65,6 +68,7 @@ export interface MemberInfo {
     description: string
     joinedAt: number
     avatar?: string
+    authUserId?: number | null
 }
 
 export interface JoinResult {
@@ -185,6 +189,14 @@ export async function updateInviteCode(roomId: string, inviteCode: string): Prom
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteCode }),
+    })
+}
+
+export async function transferRoomOwner(roomId: string, userId: number): Promise<{ room: RoomInfo }> {
+    return request(`/api/hermes/group-chat/rooms/${roomId}/owner`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
     })
 }
 

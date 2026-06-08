@@ -17,6 +17,7 @@ const props = defineProps<{
     selectedSkill: string | null
     searchQuery: string
     sourceFilter: SourceFilter | null
+    readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -232,7 +233,7 @@ function confirmDelete(category: string, skillName: string) {
                                 ]" @click="handleSelect(cat.name, skill.name)">
                                 <div class="skill-info">
                                     <span class="skill-name">
-                                        <span class="source-dot" :class="`dot-${skill.source || 'local'}`"
+                                        <span v-if="!readOnly" class="source-dot" :class="`dot-${skill.source || 'local'}`"
                                             :title="t(`skills.source.${skill.source || 'local'}`)" />
                                         {{ skill.name }}
                                         <span v-if="skill.modified" class="modified-badge"
@@ -240,7 +241,7 @@ function confirmDelete(category: string, skillName: string) {
                                     </span>
                                     <span v-if="skill.description" class="skill-desc">{{ skill.description }}</span>
                                 </div>
-                                <NSwitch size="small" :value="skill.enabled !== false"
+                                <NSwitch v-if="!readOnly" size="small" :value="skill.enabled !== false"
                                     :loading="togglingSkills.has(skill.name)"
                                     @update:value="handleToggle(cat.name, skill.name, $event)" @click.stop />
                             </button>
@@ -268,7 +269,7 @@ function confirmDelete(category: string, skillName: string) {
                     ]" @click="handleSelect(cat.name, skill.name)">
                         <div class="skill-info">
                             <span class="skill-name">
-                                <span class="source-dot" :class="`dot-${skill.source || 'local'}`"
+                                <span v-if="!readOnly" class="source-dot" :class="`dot-${skill.source || 'local'}`"
                                     :title="t(`skills.source.${skill.source || 'local'}`)" />
                                 {{ skill.name }}
                                 <span v-if="skill.modified" class="modified-badge"
@@ -276,7 +277,7 @@ function confirmDelete(category: string, skillName: string) {
                             </span>
                             <span v-if="skill.description" class="skill-desc">{{ skill.description }}</span>
                         </div>
-                        <button v-if="(skill.source ?? 'local') === 'local'" class="skill-action-btn"
+                        <button v-if="!readOnly && (skill.source ?? 'local') === 'local'" class="skill-action-btn"
                             :title="t('skills.delete')" :disabled="deletingSkills.has(skill.name)"
                             @click.stop="confirmDelete(cat.name, skill.name)">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -288,7 +289,7 @@ function confirmDelete(category: string, skillName: string) {
                                 <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                             </svg>
                         </button>
-                        <NSwitch size="small" :value="skill.enabled !== false"
+                        <NSwitch v-if="!readOnly" size="small" :value="skill.enabled !== false"
                             :loading="togglingSkills.has(skill.name)"
                             @update:value="handleToggle(cat.name, skill.name, $event)" @click.stop />
                     </button>
@@ -312,7 +313,7 @@ function confirmDelete(category: string, skillName: string) {
                     @click="handleSelect('.archive', skill.name)">
                     <div class="skill-info">
                         <span class="skill-name">
-                            <span class="source-dot" :class="`dot-${skill.source || 'local'}`"
+                            <span v-if="!readOnly" class="source-dot" :class="`dot-${skill.source || 'local'}`"
                                 :title="t(`skills.source.${skill.source || 'local'}`)" />
                             {{ skill.name }}
                         </span>

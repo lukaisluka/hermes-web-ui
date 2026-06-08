@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { NButton, NModal, useMessage } from "naive-ui";
+import { NButton, NModal } from "naive-ui";
 import { useAppStore } from "@/stores/hermes/app";
 import ModelSelector from "./ModelSelector.vue";
 import ProfileSelector from "./ProfileSelector.vue";
@@ -15,9 +15,7 @@ import { changelog } from "@/data/changelog";
 import { isStoredProfileAdmin, isStoredSuperAdmin, replaceAppRoute } from "@/api/client";
 
 const { t } = useI18n();
-const message = useMessage();
 const route = useRoute();
-const router = useRouter();
 const appStore = useAppStore();
 const { openSessionSearch } = useSessionSearch();
 const selectedKey = computed(() => {
@@ -28,13 +26,9 @@ const selectedKey = computed(() => {
 });
 const isSuperAdmin = computed(() => isStoredSuperAdmin());
 const isProfileAdmin = computed(() => isStoredProfileAdmin());
-const isVersionPreview = import.meta.env.VITE_HERMES_PREVIEW === '1';
 
 function isNavActive(...names: string[]) {
   return names.includes(selectedKey.value);
-}
-function hasRoute(name: string): boolean {
-  return router.hasRoute(name);
 }
 const logoPath = '/logo.png';
 
@@ -55,15 +49,6 @@ function isGroupCollapsed(key: string) {
   return !!collapsedGroups[key];
 }
 
-
-async function handleUpdate() {
-  const ok = await appStore.doUpdate();
-  if (ok) {
-    message.success(t('sidebar.updateSuccess'), { duration: 5000 });
-  } else {
-    message.error(t('sidebar.updateFailed'));
-  }
-}
 
 function handleReloadClient() {
   appStore.reloadClient();
@@ -165,13 +150,7 @@ function openChangelog() {
             </svg>
             <span>{{ t("sidebar.kanban") }}</span>
           </RouteLinkItem>
-          <RouteLinkItem v-if="isProfileAdmin" class="nav-item" :to="{ name: 'hermes.channels' }" :active="selectedKey === 'hermes.channels'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-            <span>{{ t("sidebar.channels") }}</span>
-          </RouteLinkItem>
-          <RouteLinkItem v-if="isProfileAdmin" class="nav-item" :to="{ name: 'hermes.skills' }" :active="selectedKey === 'hermes.skills'">
+          <RouteLinkItem class="nav-item" :to="{ name: 'hermes.skills' }" :active="selectedKey === 'hermes.skills'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="12 2 2 7 12 12 22 7 12 2" />
               <polyline points="2 17 12 22 22 17" />
@@ -186,7 +165,7 @@ function openChangelog() {
             </svg>
             <span>{{ t("sidebar.plugins") }}</span>
           </RouteLinkItem>
-          <RouteLinkItem v-if="isProfileAdmin" class="nav-item" :to="{ name: 'hermes.mcp' }" :active="selectedKey === 'hermes.mcp'">
+          <RouteLinkItem class="nav-item" :to="{ name: 'hermes.mcp' }" :active="selectedKey === 'hermes.mcp'">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 7V4h16v3" />
               <path d="M9 20h6" />
@@ -279,25 +258,6 @@ function openChangelog() {
             </svg>
             <span>{{ t("sidebar.files") }}</span>
           </RouteLinkItem>
-          <RouteLinkItem v-if="hasRoute('hermes.codingAgents') && isProfileAdmin" class="nav-item" :to="{ name: 'hermes.codingAgents' }" :active="selectedKey === 'hermes.codingAgents'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-              <line x1="12" y1="20" x2="14" y2="4" />
-            </svg>
-            <span>{{ t("sidebar.codingAgents") }}</span>
-          </RouteLinkItem>
-          <RouteLinkItem v-if="hasRoute('hermes.versionPreview') && isSuperAdmin && !isVersionPreview" class="nav-item" :to="{ name: 'hermes.versionPreview' }" :active="selectedKey === 'hermes.versionPreview'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
-              <polyline points="7.5 19.79 7.5 14.6 3 12" />
-              <polyline points="21 12 16.5 14.6 16.5 19.79" />
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-              <line x1="12" y1="22.08" x2="12" y2="12" />
-            </svg>
-            <span>{{ t("sidebar.versionPreview") }}</span>
-          </RouteLinkItem>
         </div>
       </div>
 
@@ -368,9 +328,6 @@ function openChangelog() {
       </div>
       <NButton v-if="appStore.clientOutdated" type="warning" size="tiny" block class="update-btn" @click="handleReloadClient">
         {{ t('sidebar.reloadClientVersion', { version: appStore.serverVersion }) }}
-      </NButton>
-      <NButton v-if="appStore.updateAvailable && isSuperAdmin" type="primary" size="tiny" block class="update-btn" :loading="appStore.updating" @click="handleUpdate">
-        {{ appStore.updating ? t('sidebar.updating') : t('sidebar.updateVersion', { version: appStore.latestVersion }) }}
       </NButton>
     </div>
 

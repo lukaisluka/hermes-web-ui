@@ -9,11 +9,13 @@ import SkillExternalDirsModal from '@/components/hermes/skills/SkillExternalDirs
 import MarkdownRenderer from '@/components/hermes/chat/MarkdownRenderer.vue'
 import { fetchSkills, type SkillCategory, type SkillSource, type SkillInfo } from '@/api/hermes/skills'
 import { useProfilesStore } from '@/stores/hermes/profiles'
+import { getStoredUserRole } from '@/api/client'
 
 type SourceFilter = SkillSource | 'modified'
 
 const { t, locale } = useI18n()
 const profilesStore = useProfilesStore()
+const isReadOnly = computed(() => getStoredUserRole() === 'user')
 const categories = ref<SkillCategory[]>([])
 const archived = ref<SkillInfo[]>([])
 const loading = ref(false)
@@ -154,7 +156,7 @@ function handlePinToggled(name: string, pinned: boolean) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
       </div>
-      <div class="source-legend">
+      <div v-if="!isReadOnly" class="source-legend">
         <button class="legend-item" :class="{ active: sourceFilter === 'builtin' }" @click="toggleFilter('builtin')">
           <span class="legend-dot dot-builtin" />{{ t('skills.source.builtin') }}
         </button>
@@ -173,6 +175,7 @@ function handlePinToggled(name: string, pinned: boolean) {
       </div>
       <div class="header-actions">
         <NButton
+          v-if="!isReadOnly"
           class="header-action-btn"
           size="small"
           :title="t('skills.import')"
@@ -189,6 +192,7 @@ function handlePinToggled(name: string, pinned: boolean) {
           <span class="header-action-label">{{ t('skills.import') }}</span>
         </NButton>
         <NButton
+          v-if="!isReadOnly"
           class="header-action-btn"
           size="small"
           :title="t('skills.externalDirs.manage')"
@@ -227,6 +231,7 @@ function handlePinToggled(name: string, pinned: boolean) {
               :selected-skill="selectedCategory && selectedSkill ? `${selectedCategory}/${selectedSkill}` : null"
               :search-query="searchQuery"
               :source-filter="sourceFilter"
+              :read-only="isReadOnly"
               @select="handleSelect"
               @deleted="handleSkillDeleted"
             />
@@ -241,6 +246,8 @@ function handlePinToggled(name: string, pinned: boolean) {
               :use-count="selectedSkillData?.useCount"
               :view-count="selectedSkillData?.viewCount"
               :pinned="selectedSkillData?.pinned"
+              :description="selectedSkillData?.description"
+              :read-only="isReadOnly"
               @pin-toggled="handlePinToggled"
             />
             <div v-else class="recommendations-panel">

@@ -51,6 +51,10 @@ function agentAvatarName(agent: RoomAgent): string {
 }
 
 const hasRoom = computed(() => !!store.currentRoomId)
+const currentRoomCanManage = computed(() => {
+    const room = store.rooms.find(candidate => candidate.id === store.currentRoomId)
+    return room?.canManage === true
+})
 
 /** Resolve the current user's custom avatar — first from the member list, then from the cached current-user value. */
 const userMemberAvatar = computed(() => {
@@ -143,10 +147,12 @@ async function copyRoomLink(roomId: string) {
     else message.error(t('common.copied') + ' ✗')
 }
 
-const roomContextMenuOptions = computed<DropdownOption[]>(() => [
-    { label: t('groupChat.copyRoomLink'), key: 'copy-link' },
-    { label: t('groupChat.cloneRoom'), key: 'clone-room' },
-])
+const roomContextMenuOptions = computed<DropdownOption[]>(() => {
+    const options: DropdownOption[] = [{ label: t('groupChat.copyRoomLink'), key: 'copy-link' }]
+    const room = store.rooms.find(candidate => candidate.id === contextRoomId.value)
+    if (room?.canManage === true) options.push({ label: t('groupChat.cloneRoom'), key: 'clone-room' })
+    return options
+})
 
 function handleRoomContextMenu(event: MouseEvent, roomId: string) {
     event.preventDefault()
@@ -365,7 +371,7 @@ async function handleApproval(choice: 'once' | 'session' | 'always' | 'deny') {
                         <span v-if="room.inviteCode" class="room-code">{{ room.inviteCode }}</span>
                         <span class="room-tokens">{{ formatTokens(room.totalTokens || 0) }}</span>
                     </div>
-                    <NPopconfirm @positive-click="handleDeleteRoom(room.id)">
+                    <NPopconfirm v-if="room.canManage === true" @positive-click="handleDeleteRoom(room.id)">
                         <template #trigger>
                             <button class="room-action-btn danger" @click.stop>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -435,7 +441,7 @@ async function handleApproval(choice: 'once' | 'session' | 'always' | 'deny') {
                                     <span class="agent-popover-name">{{ agent.name }}</span>
                                     <span class="agent-popover-profile">{{ agent.profile }}</span>
                                 </div>
-                                <button class="agent-popover-remove" @click="handleRemoveAgent(agent.id)">
+                                <button v-if="currentRoomCanManage" class="agent-popover-remove" @click="handleRemoveAgent(agent.id)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                 </button>
                             </div>
@@ -447,13 +453,13 @@ async function handleApproval(choice: 'once' | 'session' | 'always' | 'deny') {
                             <ProfileAvatar class="agent-avatar" :name="store.userName || store.userId" :avatar="userMemberAvatar" :size="28" />
                         </span>
                     </div>
-                    <button class="icon-btn" :title="t('groupChat.addAgent')" @click="handleAddAgent">
+                    <button v-if="currentRoomCanManage" class="icon-btn" :title="t('groupChat.addAgent')" @click="handleAddAgent">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
-                    <button class="icon-btn" :title="t('groupChat.compressionConfig')" @click="handleOpenCompressionConfig">
+                    <button v-if="currentRoomCanManage" class="icon-btn" :title="t('groupChat.compressionConfig')" @click="handleOpenCompressionConfig">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 4.6a1.65 1.65 0 0 0 1.51 1V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1z"/></svg>
                     </button>
-                    <NPopconfirm @positive-click="handleClearRoomContext">
+                    <NPopconfirm v-if="currentRoomCanManage" @positive-click="handleClearRoomContext">
                         <template #trigger>
                             <button class="icon-btn" :title="t('groupChat.clearContext')">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -555,7 +561,7 @@ async function handleApproval(choice: 'once' | 'session' | 'always' | 'deny') {
         </Teleport>
 
         <Teleport to="body">
-            <div v-if="showAddAgentModal" class="modal-backdrop" @click.self="showAddAgentModal = false">
+            <div v-if="showAddAgentModal && currentRoomCanManage" class="modal-backdrop" @click.self="showAddAgentModal = false">
                 <div class="modal">
                     <h3>{{ t('groupChat.addAgent') }}</h3>
                     <div class="form-group">
@@ -590,7 +596,7 @@ async function handleApproval(choice: 'once' | 'session' | 'always' | 'deny') {
                     </div>
                 </div>
             </div>
-            <div v-if="showCloneModal" class="modal-backdrop" @click.self="showCloneModal = false">
+            <div v-if="showCloneModal && currentRoomCanManage" class="modal-backdrop" @click.self="showCloneModal = false">
                 <div class="modal">
                     <h3>{{ t('groupChat.cloneRoom') }}</h3>
                     <div class="form-group">
@@ -624,7 +630,7 @@ async function handleApproval(choice: 'once' | 'session' | 'always' | 'deny') {
                     </div>
                 </div>
             </div>
-            <div v-if="showCompressionModal" class="modal-backdrop" @click.self="showCompressionModal = false">
+            <div v-if="showCompressionModal && currentRoomCanManage" class="modal-backdrop" @click.self="showCompressionModal = false">
                 <div class="modal">
                     <h3>{{ t('groupChat.compressionConfig') }}</h3>
                     <div class="form-group">

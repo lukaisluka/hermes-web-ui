@@ -7,6 +7,7 @@ import type { McpServerInfo } from '@/api/hermes/mcp'
 const props = defineProps<{
   server: McpServerInfo
   toolsByServer: Record<string, Array<{ name: string; description?: string }>>
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -78,7 +79,7 @@ const MAX_VISIBLE_TOOLS = 20
     </div>
 
     <!-- 底部：按钮 + 开关 -->
-    <div class="card-footer">
+    <div v-if="!readOnly" class="card-footer">
       <div class="card-actions">
         <NButton size="tiny" quaternary @click="emit('edit', server)">{{ t('mcp.edit') }}</NButton>
         <NButton size="tiny" quaternary :disabled="!server.connected" @click="emit('manageTools', server)">{{ t('mcp.manageTools') }}</NButton>

@@ -46,7 +46,7 @@ describe('account settings role access', () => {
     vi.clearAllMocks()
   })
 
-  it('keeps self-service account controls but hides locked IP management from regular users', async () => {
+  it('keeps password and avatar controls but hides username and locked IP management from regular users', async () => {
     const wrapper = mount(AccountSettings, {
       global: {
         stubs: {
@@ -63,7 +63,7 @@ describe('account settings role access', () => {
     await Promise.resolve()
 
     expect(wrapper.text()).toContain('login.changePassword')
-    expect(wrapper.text()).toContain('login.changeUsername')
+    expect(wrapper.text()).not.toContain('login.changeUsername')
     expect(wrapper.text()).not.toContain('settings.lockedIps.title')
     expect(authMocks.fetchLockedIps).not.toHaveBeenCalled()
   })

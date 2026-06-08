@@ -246,14 +246,16 @@ export async function create(ctx: Context) {
     if (jobId && ctx.state.user) setJobOwner(profile, jobId, ctx.state.user.id)
     ctx.body = { job: job ? visibleJob(ctx, job, profile) : null }
     if (jobId) {
-      audit.recordEvent({
-        action: 'job.create',
-        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-        profile,
-        targetType: 'job',
-        targetId: jobId,
-        description: `Created job "${job?.name || jobId}"`,
-      })
+      if (ctx.state?.user) {
+        audit.recordEvent({
+          action: 'job.create',
+          actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+          profile,
+          targetType: 'job',
+          targetId: jobId,
+          description: `Created job "${job?.name || jobId}"`,
+        })
+      }
     }
   } catch (error: any) {
     sendCommandError(ctx, error)
@@ -317,14 +319,16 @@ export async function remove(ctx: Context) {
     await runHermesCron(profile, ['cron', 'remove', ctx.params.id])
     deleteJobOwner(profile, ctx.params.id)
     ctx.body = { ok: true }
-    audit.recordEvent({
-      action: 'job.delete',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile,
-      targetType: 'job',
-      targetId: ctx.params.id,
-      description: `Deleted job "${jobName}"`,
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'job.delete',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile,
+        targetType: 'job',
+        targetId: ctx.params.id,
+        description: `Deleted job "${jobName}"`,
+      })
+    }
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -341,14 +345,16 @@ export async function pause(ctx: Context) {
     await runHermesCron(profile, ['cron', 'pause', ctx.params.id])
     const updatedJob = scopedJob(findJob(profile, ctx.params.id), profile)
     ctx.body = { job: updatedJob }
-    audit.recordEvent({
-      action: 'job.pause',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile,
-      targetType: 'job',
-      targetId: ctx.params.id,
-      description: `Paused job "${jobName}"`,
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'job.pause',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile,
+        targetType: 'job',
+        targetId: ctx.params.id,
+        description: `Paused job "${jobName}"`,
+      })
+    }
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -365,14 +371,16 @@ export async function resume(ctx: Context) {
     await runHermesCron(profile, ['cron', 'resume', ctx.params.id])
     const updatedJob = scopedJob(findJob(profile, ctx.params.id), profile)
     ctx.body = { job: updatedJob }
-    audit.recordEvent({
-      action: 'job.resume',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile,
-      targetType: 'job',
-      targetId: ctx.params.id,
-      description: `Resumed job "${jobName}"`,
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'job.resume',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile,
+        targetType: 'job',
+        targetId: ctx.params.id,
+        description: `Resumed job "${jobName}"`,
+      })
+    }
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -389,14 +397,16 @@ export async function run(ctx: Context) {
     await runHermesCron(profile, ['cron', 'run', ctx.params.id])
     const updatedJob = scopedJob(findJob(profile, ctx.params.id), profile)
     ctx.body = { job: updatedJob }
-    audit.recordEvent({
-      action: 'job.run',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      profile,
-      targetType: 'job',
-      targetId: ctx.params.id,
-      description: `Triggered run for job "${jobName}"`,
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'job.run',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile,
+        targetType: 'job',
+        targetId: ctx.params.id,
+        description: `Triggered run for job "${jobName}"`,
+      })
+    }
   } catch (error: any) {
     sendCommandError(ctx, error)
   }
@@ -422,12 +432,14 @@ export async function transferOwner(ctx: Context) {
   setJobOwner(profile, ctx.params.id, owner.id)
   const job = findJob(profile, ctx.params.id)
   ctx.body = { job: job ? visibleJob(ctx, job, profile) : null }
-  audit.recordEvent({
-    action: 'job.transfer_owner',
-    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-    profile,
-    targetType: 'job',
-    targetId: ctx.params.id,
-    description: `Transferred ownership of job "${job?.name || ctx.params.id}"`,
-  })
+  if (ctx.state?.user) {
+    audit.recordEvent({
+      action: 'job.transfer_owner',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      profile,
+      targetType: 'job',
+      targetId: ctx.params.id,
+      description: `Transferred ownership of job "${job?.name || ctx.params.id}"`,
+    })
+  }
 }

@@ -13,7 +13,7 @@ const storeState = vi.hoisted(() => ({
   tasks: [] as Array<{ id: string; title: string; status: string; created_at: number; assignee?: string | null }>,
   stats: { by_status: { todo: 1, done: 0 }, by_assignee: {}, total: 1 } as Record<string, any>,
   assignees: [] as Array<{ name: string; counts: Record<string, number> | null }>,
-  activeBoards: [] as Array<{ slug: string; name: string; icon?: string; total?: number }>,
+  activeBoards: [] as Array<{ slug: string; name: string; icon?: string; total?: number; can_archive?: boolean }>,
   loading: false,
   boardsLoading: false,
   selectedBoard: 'default',
@@ -160,8 +160,8 @@ describe('KanbanView', () => {
     }
     storeState.assignees = []
     storeState.activeBoards = [
-      { slug: 'default', name: 'Default', total: 0 },
-      { slug: 'project-a', name: 'Project A', total: 2 },
+      { slug: 'default', name: 'Default', total: 0, can_archive: true },
+      { slug: 'project-a', name: 'Project A', total: 2, can_archive: true },
     ]
     storeState.loading = false
     storeState.boardsLoading = false

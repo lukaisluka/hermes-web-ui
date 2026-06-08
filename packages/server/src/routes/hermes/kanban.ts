@@ -5,7 +5,7 @@ import { requireProfileAdmin } from '../../middleware/user-auth'
 export const kanbanRoutes = new Router()
 
 kanbanRoutes.get('/api/hermes/kanban/boards', ctrl.listBoards)
-kanbanRoutes.post('/api/hermes/kanban/boards', requireProfileAdmin, ctrl.createBoard)
+kanbanRoutes.post('/api/hermes/kanban/boards', ctrl.createBoard)
 kanbanRoutes.delete('/api/hermes/kanban/boards/:slug', requireProfileAdmin, ctrl.archiveBoard)
 kanbanRoutes.get('/api/hermes/kanban/capabilities', ctrl.capabilities)
 kanbanRoutes.get('/api/hermes/kanban/stats', ctrl.stats)

@@ -107,7 +107,7 @@ describe('Database Schema Synchronization', () => {
 
   describe('Normal initialization - fresh database creation', () => {
     it('creates all tables with correct schemas when database does not exist', async () => {
-      const { initAllHermesTables, USAGE_TABLE, USAGE_SCHEMA, SESSIONS_TABLE, SESSIONS_SCHEMA } =
+      const { initAllHermesTables, USAGE_TABLE, USAGE_SCHEMA, SESSIONS_TABLE, SESSIONS_SCHEMA, JOB_OWNERS_TABLE } =
         await import('../../packages/server/src/db/hermes/schemas')
 
       initAllHermesTables()
@@ -133,6 +133,8 @@ describe('Database Schema Synchronization', () => {
       expect(sessionsCols.has('id')).toBe(true)
       expect(sessionsCols.has('profile')).toBe(true)
       expect(sessionsCols.has('source')).toBe(true)
+      expect(tableExists(db, JOB_OWNERS_TABLE)).toBe(true)
+      expect(getTablePrimaryKey(db, JOB_OWNERS_TABLE)).toBe('profile,job_id')
     })
   })
 

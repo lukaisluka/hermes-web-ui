@@ -132,7 +132,7 @@ function handleCardClick(e: MouseEvent) {
       </div>
     </div>
 
-    <div class="card-actions">
+    <div v-if="job.can_manage !== false" class="card-actions">
       <NTooltip v-if="job.state !== 'paused' && job.enabled">
         <template #trigger>
           <NButton size="tiny" quaternary @click.stop="handlePause">{{ t('jobs.action.pause') }}</NButton>

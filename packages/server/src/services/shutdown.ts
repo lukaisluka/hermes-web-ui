@@ -1,9 +1,7 @@
 import { logger } from './logger'
 import { closeDb } from '../db'
-import { stopPreviewRuntime } from '../controllers/update'
 
 const DEFAULT_SHUTDOWN_FORCE_EXIT_MS = 15_000
-const DEFAULT_DESKTOP_SHUTDOWN_FORCE_EXIT_MS = 3_000
 
 function envPositiveInt(name: string): number | undefined {
   const value = Number(process.env[name])
@@ -12,9 +10,7 @@ function envPositiveInt(name: string): number | undefined {
 
 export function getShutdownForceExitMs(): number {
   const override = envPositiveInt('HERMES_WEB_UI_SHUTDOWN_FORCE_EXIT_MS')
-  if (override) return override
-  const desktop = String(process.env.HERMES_DESKTOP || '').trim().toLowerCase() === 'true'
-  return desktop ? DEFAULT_DESKTOP_SHUTDOWN_FORCE_EXIT_MS : DEFAULT_SHUTDOWN_FORCE_EXIT_MS
+  return override || DEFAULT_SHUTDOWN_FORCE_EXIT_MS
 }
 
 export function shouldStopAgentBridgeOnShutdown(signal: string): boolean {
@@ -43,13 +39,6 @@ export function bindShutdown(server: any, groupChatServer?: any, chatRunServer?:
     console.log(`[shutdown] Received signal: ${signal}`)
 
     try {
-      try {
-        await stopPreviewRuntime()
-        logger.info('Preview runtime stopped')
-      } catch (err) {
-        logger.warn(err, 'Failed to stop preview runtime (non-fatal)')
-      }
-
       if (agentBridgeManager && shouldStopAgentBridgeOnShutdown(signal)) {
         try {
           await agentBridgeManager.stop()

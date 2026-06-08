@@ -1,6 +1,6 @@
 import Router from '@koa/router'
 import * as ctrl from '../controllers/auth'
-import { requireProfileAdmin, requireSuperAdmin } from '../middleware/user-auth'
+import { requireSuperAdmin } from '../middleware/user-auth'
 
 // Public routes (no auth required)
 export const authPublicRoutes = new Router()
@@ -12,7 +12,7 @@ export const authProtectedRoutes = new Router()
 authProtectedRoutes.post('/api/auth/setup', ctrl.setupPassword)
 authProtectedRoutes.get('/api/auth/me', ctrl.currentUser)
 authProtectedRoutes.post('/api/auth/change-password', ctrl.changePassword)
-authProtectedRoutes.post('/api/auth/change-username', ctrl.changeUsername)
+authProtectedRoutes.post('/api/auth/change-username', requireSuperAdmin, ctrl.changeUsername)
 authProtectedRoutes.get('/api/auth/avatar', ctrl.getMyAvatar)
 authProtectedRoutes.put('/api/auth/avatar', ctrl.updateMyAvatar)
 authProtectedRoutes.delete('/api/auth/password', ctrl.removePassword)
@@ -20,5 +20,5 @@ authProtectedRoutes.get('/api/auth/users', requireSuperAdmin, ctrl.listManagedUs
 authProtectedRoutes.post('/api/auth/users', requireSuperAdmin, ctrl.createManagedUser)
 authProtectedRoutes.put('/api/auth/users/:id', requireSuperAdmin, ctrl.updateManagedUser)
 authProtectedRoutes.delete('/api/auth/users/:id', requireSuperAdmin, ctrl.deleteManagedUser)
-authProtectedRoutes.get('/api/auth/locked-ips', requireProfileAdmin, ctrl.listLockedIps)
-authProtectedRoutes.delete('/api/auth/locked-ips', requireProfileAdmin, ctrl.unlockIpHandler)
+authProtectedRoutes.get('/api/auth/locked-ips', requireSuperAdmin, ctrl.listLockedIps)
+authProtectedRoutes.delete('/api/auth/locked-ips', requireSuperAdmin, ctrl.unlockIpHandler)

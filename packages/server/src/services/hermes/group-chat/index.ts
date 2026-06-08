@@ -77,6 +77,7 @@ interface RoomInfo {
     id: string
     name: string
     profile: string | null
+    ownerUserId: number | null
     inviteCode: string | null
     triggerTokens: number
     maxHistoryTokens: number
@@ -300,15 +301,15 @@ class ChatStorage {
     // ─── Rooms ────────────────────────────────────────────────
 
     getRoom(roomId: string): RoomInfo | undefined {
-        return this.db()?.prepare('SELECT id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE id = ?').get(roomId) as any
+        return this.db()?.prepare('SELECT id, name, profile, ownerUserId, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE id = ?').get(roomId) as any
     }
 
     getRoomByInviteCode(code: string): RoomInfo | undefined {
-        return this.db()?.prepare('SELECT id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE inviteCode = ?').get(code) as any
+        return this.db()?.prepare('SELECT id, name, profile, ownerUserId, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms WHERE inviteCode = ?').get(code) as any
     }
 
     getAllRooms(): RoomInfo[] {
-        return (this.db()?.prepare('SELECT id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms ORDER BY id').all() || []) as any[]
+        return (this.db()?.prepare('SELECT id, name, profile, ownerUserId, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount, totalTokens, sessionSeed FROM gc_rooms ORDER BY id').all() || []) as any[]
     }
 
     getRoomsForProfiles(profiles: string[]): RoomInfo[] {
@@ -316,7 +317,7 @@ class ChatStorage {
         if (!uniqueProfiles.length) return []
         const placeholders = uniqueProfiles.map(() => '?').join(', ')
         return (this.db()?.prepare(
-            `SELECT DISTINCT r.id, r.name, r.profile, r.inviteCode, r.triggerTokens, r.maxHistoryTokens, r.tailMessageCount, r.totalTokens, r.sessionSeed
+            `SELECT DISTINCT r.id, r.name, r.profile, r.ownerUserId, r.inviteCode, r.triggerTokens, r.maxHistoryTokens, r.tailMessageCount, r.totalTokens, r.sessionSeed
              FROM gc_rooms r
              LEFT JOIN gc_room_agents a ON a.roomId = r.id
              WHERE r.profile IN (${placeholders}) OR a.profile IN (${placeholders})
@@ -324,10 +325,10 @@ class ChatStorage {
         ).all(...uniqueProfiles, ...uniqueProfiles) || []) as any[]
     }
 
-    saveRoom(id: string, name: string, inviteCode?: string, config?: { triggerTokens?: number; maxHistoryTokens?: number; tailMessageCount?: number }, profile?: string | null): void {
+    saveRoom(id: string, name: string, inviteCode?: string, config?: { triggerTokens?: number; maxHistoryTokens?: number; tailMessageCount?: number }, profile?: string | null, ownerUserId?: number | null): void {
         this.db()?.prepare(
-            'INSERT OR IGNORE INTO gc_rooms (id, name, profile, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).run(id, name, profile || null, inviteCode || null, config?.triggerTokens ?? 100000, config?.maxHistoryTokens ?? 32000, config?.tailMessageCount ?? 10)
+            'INSERT OR IGNORE INTO gc_rooms (id, name, profile, ownerUserId, inviteCode, triggerTokens, maxHistoryTokens, tailMessageCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(id, name, profile || null, ownerUserId ?? null, inviteCode || null, config?.triggerTokens ?? 100000, config?.maxHistoryTokens ?? 32000, config?.tailMessageCount ?? 10)
     }
 
     updateRoomConfig(roomId: string, config: { triggerTokens?: number; maxHistoryTokens?: number; tailMessageCount?: number }): void {
@@ -343,6 +344,10 @@ class ChatStorage {
 
     updateRoomInviteCode(roomId: string, inviteCode: string): void {
         this.db()?.prepare('UPDATE gc_rooms SET inviteCode = ? WHERE id = ?').run(inviteCode, roomId)
+    }
+
+    updateRoomOwner(roomId: string, ownerUserId: number | null): void {
+        this.db()?.prepare('UPDATE gc_rooms SET ownerUserId = ? WHERE id = ?').run(ownerUserId, roomId)
     }
 
     updateRoomTotalTokens(roomId: string, tokens: number): void {
@@ -603,6 +608,13 @@ class ChatStorage {
             }
         }
         return members.map(({ authUserId: _authUserId, ...member }) => member)
+    }
+
+    isRoomMemberByAuthUserId(roomId: string, authUserId: number): boolean {
+        if (!Number.isInteger(authUserId) || authUserId <= 0) return false
+        return Boolean(this.db()?.prepare(
+            'SELECT 1 FROM gc_room_members WHERE roomId = ? AND authUserId = ? LIMIT 1'
+        ).get(roomId, authUserId))
     }
 
     removeRoomMembersForAgent(roomId: string, agent: Pick<RoomAgent, 'agentId' | 'name'>): void {

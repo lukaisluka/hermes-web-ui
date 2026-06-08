@@ -8,22 +8,16 @@ import 'katex/dist/katex.min.css'
 
 // Apply theme classes before mount to prevent FOUC (Flash of Unstyled Content)
 const savedBrightness = localStorage.getItem('hermes_brightness') || 'system'
-const savedStyle = localStorage.getItem('hermes_style') || 'ink'
 
 // Resolve dark mode
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 const isDark = savedBrightness === 'dark' || (savedBrightness === 'system' && prefersDark)
 
-// Resolve style
-const isComic = savedStyle === 'comic'
-
 // Apply classes to prevent FOUC
 if (isDark) {
   document.documentElement.classList.add('dark')
 }
-if (isComic) {
-  document.documentElement.classList.add('comic')
-}
+document.documentElement.classList.remove('comic')
 
 // Read token from URL BEFORE router initializes (hash router strips params)
 const urlParams = new URLSearchParams(window.location.search)

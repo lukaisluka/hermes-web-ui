@@ -47,7 +47,7 @@ const localizedTaskStatus = computed(() => {
 
 const canMutateTask = computed(() => {
   const status = detail.value?.task.status
-  return status !== 'done' && status !== 'archived'
+  return detail.value?.task.can_manage !== false && status !== 'done' && status !== 'archived'
 })
 
 const sessionResults = ref<any[]>([])

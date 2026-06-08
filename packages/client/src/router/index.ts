@@ -78,7 +78,6 @@ const router = createRouter({
       path: '/hermes/skills',
       name: 'hermes.skills',
       component: () => import('@/views/hermes/SkillsView.vue'),
-      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/plugins',
@@ -96,12 +95,6 @@ const router = createRouter({
       path: '/hermes/settings',
       name: 'hermes.settings',
       component: () => import('@/views/hermes/SettingsView.vue'),
-    },
-    {
-      path: '/hermes/channels',
-      name: 'hermes.channels',
-      component: () => import('@/views/hermes/ChannelsView.vue'),
-      meta: { requiresProfileAdmin: true },
     },
     {
       path: '/hermes/terminal',
@@ -125,22 +118,9 @@ const router = createRouter({
       component: () => import('@/views/hermes/FilesView.vue'),
     },
     {
-      path: '/hermes/coding-agents',
-      name: 'hermes.codingAgents',
-      component: () => import('@/views/hermes/CodingAgentsView.vue'),
-      meta: { requiresProfileAdmin: true },
-    },
-    {
-      path: '/hermes/version-preview',
-      name: 'hermes.versionPreview',
-      component: () => import('@/views/hermes/VersionPreviewView.vue'),
-      meta: { requiresSuperAdmin: true },
-    },
-    {
       path: '/hermes/mcp',
       name: 'hermes.mcp',
       component: () => import('@/views/hermes/McpManagerView.vue'),
-      meta: { requiresSuperAdmin: true },
     },
   ],
 })

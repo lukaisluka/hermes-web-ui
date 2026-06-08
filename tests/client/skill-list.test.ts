@@ -138,4 +138,25 @@ describe('SkillList', () => {
     expect(wrapper.text()).toContain('tools')
     expect(wrapper.text()).toContain('local-skill')
   })
+
+  it('hides management controls and source metadata in read-only mode', () => {
+    const wrapper = mount(SkillList, {
+      props: {
+        categories: [{
+          name: 'tools',
+          description: '',
+          skills: [{ name: 'local-skill', description: '', enabled: true, source: 'local' }],
+        }],
+        archived: [],
+        selectedSkill: null,
+        searchQuery: '',
+        sourceFilter: null,
+        readOnly: true,
+      },
+    })
+
+    expect(wrapper.find('.source-dot').exists()).toBe(false)
+    expect(wrapper.find('.skill-action-btn').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'NSwitch' }).exists()).toBe(false)
+  })
 })

@@ -240,13 +240,15 @@ export async function changePassword(ctx: Context) {
   }
 
   updateUserPassword(user.id, newPassword)
-  audit.recordEvent({
-    action: 'user.change_password',
-    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-    targetType: 'user',
-    targetId: String(ctx.state.user.id),
-    description: 'Changed own password',
-  })
+  if (ctx.state?.user) {
+    audit.recordEvent({
+      action: 'user.change_password',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      targetType: 'user',
+      targetId: String(ctx.state.user.id),
+      description: 'Changed own password',
+    })
+  }
   ctx.body = { success: true }
 }
 
@@ -284,14 +286,16 @@ export async function changeUsername(ctx: Context) {
 
   const oldUsername = user.username
   updateUsername(user.id, newUsername)
-  audit.recordEvent({
-    action: 'user.change_username',
-    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-    targetType: 'user',
-    targetId: String(user.id),
-    description: `Changed username from "${oldUsername}" to "${newUsername}"`,
-    meta: { oldUsername, newUsername },
-  })
+  if (ctx.state?.user) {
+    audit.recordEvent({
+      action: 'user.change_username',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      targetType: 'user',
+      targetId: String(user.id),
+      description: `Changed username from "${oldUsername}" to "${newUsername}"`,
+      meta: { oldUsername, newUsername },
+    })
+  }
   ctx.body = { success: true }
 }
 
@@ -389,14 +393,16 @@ export async function createManagedUser(ctx: Context) {
     profiles: role === 'super_admin' ? [] : profiles,
     defaultProfile: body.defaultProfile,
   })
-  audit.recordEvent({
-    action: 'user.create',
-    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-    targetType: 'user',
-    targetId: String(user?.id),
-    description: `Created user "${username}" with role "${role}"`,
-    meta: { username, role, profiles: role === 'super_admin' ? [] : profiles },
-  })
+  if (ctx.state?.user) {
+    audit.recordEvent({
+      action: 'user.create',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      targetType: 'user',
+      targetId: String(user?.id),
+      description: `Created user "${username}" with role "${role}"`,
+      meta: { username, role, profiles: role === 'super_admin' ? [] : profiles },
+    })
+  }
   const users = listUsers()
   ctx.status = 201
   ctx.body = {
@@ -489,14 +495,16 @@ export async function updateManagedUser(ctx: Context) {
     profiles: nextRole === 'super_admin' ? [] : profiles,
     defaultProfile: body.defaultProfile,
   })
-  audit.recordEvent({
-    action: 'user.update',
-    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-    targetType: 'user',
-    targetId: String(user.id),
-    description: `Updated user "${user.username}" (role: ${nextRole}, status: ${nextStatus})`,
-    meta: { username: user.username, role: nextRole, status: nextStatus, profiles },
-  })
+  if (ctx.state?.user) {
+    audit.recordEvent({
+      action: 'user.update',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      targetType: 'user',
+      targetId: String(user.id),
+      description: `Updated user "${user.username}" (role: ${nextRole}, status: ${nextStatus})`,
+      meta: { username: user.username, role: nextRole, status: nextStatus, profiles },
+    })
+  }
   const nextUser = findUserById(user.id)
   const nextProfiles = nextUser?.role === 'super_admin' && nextUser.status === 'active'
     ? previousProfiles
@@ -536,14 +544,16 @@ export async function deleteManagedUser(ctx: Context) {
   const previousProfiles = listUserProfiles(user.id).map(profile => profile.profile_name)
   const deletedUser = user
   deleteUser(user.id)
-  audit.recordEvent({
-    action: 'user.delete',
-    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-    targetType: 'user',
-    targetId: String(user.id),
-    description: `Deleted user "${deletedUser.username}"`,
-    meta: { username: deletedUser.username, role: deletedUser.role },
-  })
+  if (ctx.state?.user) {
+    audit.recordEvent({
+      action: 'user.delete',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      targetType: 'user',
+      targetId: String(user.id),
+      description: `Deleted user "${deletedUser.username}"`,
+      meta: { username: deletedUser.username, role: deletedUser.role },
+    })
+  }
   await reconcileRevokedProfileOwnership(user.id, previousProfiles)
   ctx.body = { success: true, users: listUsers() }
 }
@@ -570,14 +580,16 @@ export async function unlockIpHandler(ctx: Context) {
       ctx.body = { error: 'IP not locked' }
       return
     }
-    audit.recordEvent({
-      action: 'auth.unlock_ip',
-      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
-      targetType: 'locked_ip',
-      targetId: ip,
-      description: `Unlocked IP "${ip}"`,
-      meta: { ip },
-    })
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'auth.unlock_ip',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        targetType: 'locked_ip',
+        targetId: ip,
+        description: `Unlocked IP "${ip}"`,
+        meta: { ip },
+      })
+    }
     ctx.body = { success: true }
     return
   }

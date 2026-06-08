@@ -13,9 +13,11 @@ import {
   mcpServerUpdate, mcpServerTest, mcpReload,
   type McpServerInfo, type McpServerConfig,
 } from '@/api/hermes/mcp'
+import { getStoredUserRole } from '@/api/client'
 
 const { t } = useI18n()
 const message = useMessage()
+const isReadOnly = computed(() => getStoredUserRole() === 'user')
 
 const servers = ref<McpServerInfo[]>([])
 const loading = ref(false)
@@ -529,7 +531,7 @@ async function saveToolsVisibility() {
           size="small"
           class="search-input"
         />
-        <div class="btn-group">
+        <div v-if="!isReadOnly" class="btn-group">
           <NButton size="small" type="primary" @click="handleReload()">
             {{ t('mcp.reloadAll') }}
           </NButton>
@@ -546,6 +548,7 @@ async function saveToolsVisibility() {
             :key="server.name"
             :server="server"
             :tools-by-server="toolsByServer"
+            :read-only="isReadOnly"
             @edit="openEditModal"
             @test="handleTest"
             @reload="handleReload"
@@ -558,7 +561,7 @@ async function saveToolsVisibility() {
       </NSpin>
     </div>
 
-    <NModal v-model:show="showModal" :title="modalMode === 'add' ? t('mcp.addTitle') : t('mcp.editTitle')" preset="card" :style="{ width: 'min(520px, calc(100vw - 32px))' }">
+    <NModal v-if="!isReadOnly" v-model:show="showModal" :title="modalMode === 'add' ? t('mcp.addTitle') : t('mcp.editTitle')" preset="card" :style="{ width: 'min(520px, calc(100vw - 32px))' }">
       <div class="mode-switch-row">
         <NRadioGroup v-model:value="inputMode" size="small" @update:value="handleModeChange">
           <NRadioButton value="json">JSON</NRadioButton>
@@ -584,7 +587,7 @@ async function saveToolsVisibility() {
     </NModal>
 
     <!-- Tools Visibility Modal -->
-    <NModal v-model:show="showToolsModal" :title="t('mcp.toolsVisibilityTitle')" preset="card" :style="{ width: 'min(480px, calc(100vw - 32px))' }">
+    <NModal v-if="!isReadOnly" v-model:show="showToolsModal" :title="t('mcp.toolsVisibilityTitle')" preset="card" :style="{ width: 'min(480px, calc(100vw - 32px))' }">
       <div v-if="toolsModalServer" class="tools-modal-content">
         <div class="tools-modal-header">
           <span class="server-name-label">{{ toolsModalServer.name }}</span>

@@ -106,7 +106,7 @@ print(json.dumps({
   })
 })
 
-describe('agent bridge Windows desktop subprocess defaults', () => {
+describe('agent bridge Windows subprocess defaults', () => {
   it('adds CREATE_NO_WINDOW to sync and async nested subprocesses without replacing existing flags', async () => {
     const result = await runBridgeProbe(String.raw`
 import importlib.util
@@ -152,7 +152,6 @@ class FakeStartupInfo:
 
 try:
     bridge.os.name = "nt"
-    bridge.os.environ["HERMES_DESKTOP"] = "true"
     bridge.subprocess.Popen = FakePopen
     bridge.asyncio.create_subprocess_exec = fake_create_subprocess_exec
     bridge.asyncio.create_subprocess_shell = fake_create_subprocess_shell

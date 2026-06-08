@@ -136,34 +136,3 @@ export async function saveCredentials(
     body: JSON.stringify({ platform, values }),
   })
 }
-
-export interface WeixinQrCode {
-  qrcode: string
-  qrcode_url: string
-}
-
-export interface WeixinQrStatus {
-  status: 'wait' | 'scaned' | 'scaned_but_redirect' | 'expired' | 'confirmed'
-  account_id?: string
-  token?: string
-  base_url?: string
-}
-
-export async function fetchWeixinQrCode(): Promise<WeixinQrCode> {
-  return request<WeixinQrCode>('/api/hermes/weixin/qrcode')
-}
-
-export async function pollWeixinQrStatus(qrcode: string): Promise<WeixinQrStatus> {
-  return request<WeixinQrStatus>(`/api/hermes/weixin/qrcode/status?qrcode=${encodeURIComponent(qrcode)}`)
-}
-
-export async function saveWeixinCredentials(data: {
-  account_id: string
-  token: string
-  base_url?: string
-}): Promise<void> {
-  await request('/api/hermes/weixin/save', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-}

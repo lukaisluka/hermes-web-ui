@@ -211,6 +211,54 @@ describe('skills controller', () => {
     }
   })
 
+  it('returns enabled skill names and descriptions only to regular users', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'hermes-web-ui-readonly-skills-'))
+    const profileDir = join(root, 'profile')
+    const enabledSkillDir = join(profileDir, 'skills', 'tools', 'enabled-skill')
+    const disabledSkillDir = join(profileDir, 'skills', 'tools', 'disabled-skill')
+    const archivedSkillDir = join(profileDir, 'skills', '.archive', 'archived-skill')
+
+    await mkdir(enabledSkillDir, { recursive: true })
+    await mkdir(disabledSkillDir, { recursive: true })
+    await mkdir(archivedSkillDir, { recursive: true })
+    await writeFile(join(enabledSkillDir, 'SKILL.md'), '# Enabled\nsafe description\n', 'utf-8')
+    await writeFile(join(disabledSkillDir, 'SKILL.md'), '# Disabled\nhidden description\n', 'utf-8')
+    await writeFile(join(archivedSkillDir, 'SKILL.md'), '# Archived\nhidden archive\n', 'utf-8')
+
+    mockGetProfileDir.mockReturnValue(profileDir)
+    mockReadConfigYamlForProfile.mockResolvedValue({
+      skills: { disabled: ['disabled-skill'] },
+    })
+
+    try {
+      const { list } = await loadController()
+      const ctx: any = {
+        state: {
+          profile: { name: 'research' },
+          user: { id: 7, role: 'user' },
+        },
+        body: null,
+      }
+
+      await list(ctx)
+
+      expect(ctx.body).toEqual({
+        categories: [{
+          name: 'tools',
+          description: expect.any(String),
+          skills: [{
+            name: 'enabled-skill',
+            description: 'safe description',
+            enabled: true,
+          }],
+        }],
+        archived: [],
+      })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it('updates external skill directories in the request-scoped profile config', async () => {
     let updatedConfig: Record<string, any> | undefined
     mockUpdateConfigYamlForProfile.mockImplementation(async (_profile: string, updater: (config: Record<string, any>) => Record<string, any>) => {

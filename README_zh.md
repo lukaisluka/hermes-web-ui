@@ -4,14 +4,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> 的全功能桌面应用和 Web 管理面板。<br/>
-  管理 AI 聊天会话、监控用量与成本、配置平台渠道、<br/>
+  <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> 的自托管 Web 管理面板。<br/>
+  管理 AI 聊天会话、监控用量与成本、<br/>
   管理定时任务、浏览技能 —— 全部在一个简洁响应式的 Web 界面中完成。
 </p>
 
 <p align="center">
-  <a href="https://github.com/lukaisluka/hermes-web-ui/releases/latest">下载 Hermes Studio 桌面版</a>
-  ·
   <code>npm install -g hermes-web-ui && hermes-web-ui start</code>
 </p>
 
@@ -56,25 +54,6 @@
 - 会话搜索 — Ctrl+K 搜索 Web UI 本地会话库；不包含只读 Hermes 历史会话
 - 按账号授权 Profile 汇总模型选择器 — 只展示当前账号可访问的 Hermes Profile 中可用的模型
 - 每个会话显示模型标签和上下文 Token 用量
-
-### 平台渠道
-
-在一个页面统一配置 **8 个平台**：
-
-| 平台 | 功能 |
-|---|---|
-| Telegram | Bot Token、提及控制、表情回应、自由回复聊天 |
-| Discord | Bot Token、提及、自动线程、表情回应、频道白名单/黑名单 |
-| Slack | Bot Token、提及控制、Bot 消息处理 |
-| WhatsApp | 启用/禁用、提及控制、提及模式 |
-| Matrix | Access Token、Homeserver、自动线程、私信提及线程 |
-| 飞书 | App ID / Secret、提及控制 |
-| 微信 | 扫码登录（浏览器扫码，自动保存凭证） |
-| 企业微信 | Bot ID / Secret |
-
-- 凭证管理写入 `~/.hermes/.env`
-- 渠道行为设置写入 `~/.hermes/config.yaml`
-- 每个平台已配置/未配置状态检测
 
 ### 用量分析
 
@@ -181,20 +160,6 @@ hermes-web-ui reset-default-login
 
 ## 快速开始
 
-### 桌面应用（推荐）
-
-从 [GitHub Releases](https://github.com/lukaisluka/hermes-web-ui/releases/latest)
-下载最新的 **Hermes Studio** 桌面安装包。
-
-桌面版会发布 macOS、Windows 和 Linux 构建；适用时会区分不同 CPU 架构。
-桌面应用内置 Web UI 运行时，Hermes Agent 数据会保存到原生 Hermes 目录：
-
-- Windows：`%LOCALAPPDATA%\hermes`（找不到时回退到 `%APPDATA%\hermes`）
-- macOS/Linux：`~/.hermes`
-
-桌面壳自身的 Web UI 状态会单独保存到 `~/.hermes-web-ui`，除非设置了
-`HERMES_WEB_UI_HOME`。
-
 ### npm 安装
 
 ```bash
@@ -282,9 +247,6 @@ Web UI 启动后端聊天能力时，会优先使用包含 `run_agent.py` 的源
 | `HERMES_WEB_UI_DISABLE_SKILL_INJECTION` | 未设置 | 跳过启动时的内置 skill 注入；如果内置 skills 由 Web UI 外部管理，或不希望覆盖同名目标目录，可设为 `1`、`true`、`yes` 或 `on`。 |
 | `HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN` | 生产环境默认开启 | Web UI 关闭时是否同时停止托管的 gateway 进程；设为 `0` 或 `false` 可让 gateway 分离运行。 |
 | `GATEWAY_HOST` | `127.0.0.1` | 旧 gateway 兼容配置中写入 profile 的默认 gateway host。 |
-| `HERMES_WEB_UI_PREVIEW_REPO` | package repository | Version Preview 使用的 GitHub 仓库。 |
-| `HERMES_WEB_UI_PREVIEW_AGENT_BRIDGE_TRANSPORT` | 平台默认值 | Version Preview broker transport。设为 `tcp` 可让预览环境在 macOS/Linux 上也使用 loopback TCP；未设置时会跟随 `HERMES_AGENT_BRIDGE_WORKER_TRANSPORT=tcp`。 |
-| `HERMES_WEB_UI_PREVIEW_AGENT_BRIDGE_ENDPOINT` | 隔离的预览 endpoint | 直接覆盖 Version Preview 的 broker endpoint。 |
 | `HERMES_WEB_UI_BACKEND_PORT` | `8648` | Vite dev proxy 使用的后端端口。 |
 | `HERMES_WEB_UI_FRONTEND_PORT` | `8649` | 前端 Vite dev server 端口。 |
 

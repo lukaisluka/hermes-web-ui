@@ -61,6 +61,7 @@ export interface Job {
   } | null
   last_delivery_error: string | null
   profile?: string
+  can_manage?: boolean
 }
 
 export interface CreateJobRequest {
@@ -192,4 +193,11 @@ export async function resumeJob(jobId: string, profile?: string): Promise<Job> {
 
 export async function runJob(jobId: string, profile?: string): Promise<Job> {
   return unwrap(await request<{ job: Job }>(withProfile(`/api/hermes/jobs/${jobId}/run`, profile), { method: 'POST' }))
+}
+
+export async function transferJobOwner(jobId: string, userId: number, profile?: string): Promise<Job> {
+  return unwrap(await request<{ job: Job }>(withProfile(`/api/hermes/jobs/${jobId}/owner`, profile), {
+    method: 'PUT',
+    body: JSON.stringify({ user_id: userId }),
+  }))
 }

@@ -18,7 +18,7 @@ import { setGroupChatServer } from './routes/hermes/group-chat'
 import { setChatRunServer } from './routes/hermes/chat-run'
 import { GroupChatServer } from './services/hermes/group-chat'
 import { ChatRunSocket } from './services/hermes/run-chat'
-import { getAgentBridgeManager, startAgentBridgeManager } from './services/hermes/agent-bridge'
+import { startAgentBridgeManager } from './services/hermes/agent-bridge'
 import { HermesSkillInjector } from './services/hermes/skill-injector'
 import { ensureProfileGatewaysRunning } from './services/hermes/gateway-autostart'
 import { refreshConfiguredProviderModelCatalogsInBackground } from './services/hermes/model-catalog-cache'
@@ -82,10 +82,6 @@ function safeNetworkInterfaces() {
   }
 }
 
-function isDesktopRuntime(): boolean {
-  return String(process.env.HERMES_DESKTOP || '').trim().toLowerCase() === 'true'
-}
-
 function envFlagEnabled(name: string): boolean {
   const value = String(process.env[name] || '').trim().toLowerCase()
   return ['1', 'true', 'yes', 'on'].includes(value)
@@ -121,32 +117,6 @@ async function startRuntimeServicesBeforeListen(): Promise<void> {
   }
 }
 
-function startRuntimeServicesAfterListen(): void {
-  if (gatewayAutostartDisabled()) {
-    console.log('[bootstrap] profile gateway check disabled by HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART')
-  } else {
-    void (async () => {
-      try {
-        await ensureProfileGatewaysRunning()
-        console.log('[bootstrap] profile gateways checked')
-      } catch (err) {
-        logger.warn(err, '[bootstrap] failed to ensure profile gateways')
-        console.warn('[bootstrap] failed to ensure profile gateways:', err instanceof Error ? err.message : err)
-      }
-    })()
-  }
-
-  void (async () => {
-    try {
-      agentBridgeManager = await startAgentBridgeManager()
-      console.log('[bootstrap] agent bridge started')
-    } catch (err) {
-      logger.warn(err, '[bootstrap] agent bridge failed to start')
-      console.warn('[bootstrap] agent bridge failed to start:', err instanceof Error ? err.message : err)
-    }
-  })()
-}
-
 export async function bootstrap() {
   console.log(`hermes-web-ui v${APP_VERSION} starting...`)
   await mkdir(config.uploadDir, { recursive: true })
@@ -179,9 +149,7 @@ export async function bootstrap() {
     }
   }
 
-  if (!isDesktopRuntime()) {
-    await startRuntimeServicesBeforeListen()
-  }
+  await startRuntimeServicesBeforeListen()
 
   const app = new Koa()
   await new Promise(resolve => setTimeout(resolve, 1000))
@@ -259,11 +227,6 @@ export async function bootstrap() {
   console.log(`Log: ${config.appHome}/logs/server.log`)
   logger.info('Server: http://localhost:%d (LAN: http://%s:%d)', config.port, localIp, config.port)
   refreshConfiguredProviderModelCatalogsInBackground('bootstrap')
-
-  if (isDesktopRuntime()) {
-    agentBridgeManager = getAgentBridgeManager()
-    startRuntimeServicesAfterListen()
-  }
 
   // Restore group chat agents after server is ready.
   groupChatServer.restoreWhenReady()

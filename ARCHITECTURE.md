@@ -1,7 +1,7 @@
 # Architecture
 
-Hermes Web UI is a TypeScript monorepo that ships a browser dashboard, a Koa
-backend, and an Electron desktop distribution around Hermes Agent.
+Hermes Web UI is a TypeScript monorepo that ships a browser dashboard and a Koa
+backend around Hermes Agent. Supported deployments are npm and Docker.
 
 ## Package Boundaries
 
@@ -9,9 +9,8 @@ backend, and an Electron desktop distribution around Hermes Agent.
 | --- | --- | --- |
 | Client | `packages/client/src` | Vue UI, routing, Pinia stores, API wrappers, i18n, browser-visible state. |
 | Server | `packages/server/src` | HTTP API, auth, Socket.IO, SQLite stores, file access, Hermes runtime integration. |
-| Desktop | `packages/desktop` | Electron shell, local Web UI server bootstrap, updater, bundled Python/Hermes runtime. |
 | Tests | `tests` | Vitest unit/integration tests and Playwright browser tests. |
-| CI | `.github/workflows` | Build, e2e, lockfile, Docker, and desktop release automation. |
+| CI | `.github/workflows` | Build, e2e, lockfile, and Docker release automation. |
 
 ## Request Flow
 
@@ -65,19 +64,6 @@ Frontend rules:
 - Use existing Naive UI patterns before adding new UI conventions.
 - Add visible text to all locale files.
 - Keep component styles scoped unless the style is intentionally global.
-
-## Desktop Release Flow
-
-Desktop packaging is intentionally split:
-
-- Pull requests run the web UI build and tests in `.github/workflows/build.yml`.
-- Published releases and manual dispatches run desktop artifact packaging in `.github/workflows/desktop-release.yml`
-  and `.github/workflows/desktop-manual-build.yml`.
-- Each release matrix target uploads only the artifact globs for its own platform.
-
-Do not make a Windows job require macOS `.dmg` files or a Linux job require
-Windows installers. Keep `fail_on_unmatched_files: true` where platform-specific
-artifact lists make the expectation explicit.
 
 ## Validation Surface
 

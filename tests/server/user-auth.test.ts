@@ -537,4 +537,33 @@ describe('user auth tables and middleware', () => {
     await auth.requireProfileAdmin(adminCtx, next)
     expect(next).toHaveBeenCalledOnce()
   })
+
+  it('requires profile admins to be authorized for the target profile path parameter', async () => {
+    const { users, auth } = await initUsers()
+    const admin = users.createUser({
+      username: 'ops',
+      password: 'secret',
+      role: 'admin',
+      profiles: ['research'],
+    })!
+
+    const deniedCtx = makeCtx({ id: admin.id, username: 'ops', role: 'admin' }, 'research')
+    deniedCtx.params = { name: 'private' }
+    const deniedNext = vi.fn(async () => {})
+    await auth.requireTargetProfileAdmin(deniedCtx, deniedNext)
+    expect(deniedCtx.status).toBe(403)
+    expect(deniedNext).not.toHaveBeenCalled()
+
+    const allowedCtx = makeCtx({ id: admin.id, username: 'ops', role: 'admin' }, 'research')
+    allowedCtx.params = { name: 'research' }
+    const allowedNext = vi.fn(async () => {})
+    await auth.requireTargetProfileAdmin(allowedCtx, allowedNext)
+    expect(allowedNext).toHaveBeenCalledOnce()
+
+    const superCtx = makeCtx({ id: 1, username: 'root', role: 'super_admin' }, 'research')
+    superCtx.params = { name: 'private' }
+    const superNext = vi.fn(async () => {})
+    await auth.requireTargetProfileAdmin(superCtx, superNext)
+    expect(superNext).toHaveBeenCalledOnce()
+  })
 })

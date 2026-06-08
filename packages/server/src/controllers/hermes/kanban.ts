@@ -12,7 +12,14 @@ import {
   findLatestExactSessionIdWithProfile,
 } from '../../db/hermes/sessions-db'
 import { listUserProfiles } from '../../db/hermes/users-store'
-import { isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
+import {
+  getKanbanBoardScope,
+  getKanbanTaskOwner,
+  setKanbanBoardScope,
+  setKanbanTaskCreator,
+  setKanbanTaskDispatcher,
+} from '../../db/hermes/kanban-ownership-store'
+import { isProfileAdmin, isRegularUser, isSuperAdmin } from '../../middleware/user-auth'
 
 const DEFAULT_PROFILE = 'default'
 
@@ -54,12 +61,38 @@ async function rejectRegularUserTaskAccess(ctx: Context, board: string, taskId: 
     ctx.body = { error: 'Task not found' }
     return true
   }
-  if (!canUseProfile(ctx, detail.task.assignee)) {
+  const owner = getKanbanTaskOwner(board, taskId)
+  if (owner?.creator_user_id !== ctx.state.user?.id && !canUseProfile(ctx, detail.task.assignee)) {
     ctx.status = 403
-    ctx.body = { error: `Profile "${taskAssigneeProfile(detail.task)}" is not available for this user` }
+    ctx.body = { error: 'Task is not manageable by this user' }
     return true
   }
   return false
+}
+
+function canManageTask(ctx: Context, board: string, task: { id: string; assignee: string | null }): boolean {
+  const user = ctx.state?.user
+  if (!user || isProfileAdmin(user)) return true
+  const owner = getKanbanTaskOwner(board, task.id)
+  return owner?.creator_user_id === user.id || canUseProfile(ctx, task.assignee)
+}
+
+function presentTask(ctx: Context, board: string, task: kanbanCli.KanbanTask): kanbanCli.KanbanTask & { can_manage?: boolean } {
+  if (!ctx.state?.user) return task
+  return { ...task, can_manage: canManageTask(ctx, board, task) }
+}
+
+function boardIsVisible(ctx: Context, board: string): boolean {
+  const scope = getKanbanBoardScope(board)
+  if (scope) return canUseProfile(ctx, scope.profile)
+  return !isRegularUser(ctx.state?.user) || board === 'default'
+}
+
+function rejectBoardAccess(ctx: Context, board: string): boolean {
+  if (boardIsVisible(ctx, board)) return false
+  ctx.status = 403
+  ctx.body = { error: `Kanban board "${board}" is not available for this user` }
+  return true
 }
 
 async function rejectRegularUserTaskListAccess(ctx: Context, board: string, taskIds: string[]): Promise<boolean> {
@@ -67,6 +100,13 @@ async function rejectRegularUserTaskListAccess(ctx: Context, board: string, task
     if (await rejectRegularUserTaskAccess(ctx, board, taskId)) return true
   }
   return false
+}
+
+async function rejectRegularUserTaskTerminationAccess(ctx: Context, board: string, taskId: string): Promise<boolean> {
+  if (!isRegularUser(ctx.state?.user)) return false
+  const owner = getKanbanTaskOwner(board, taskId)
+  if (owner?.dispatcher_user_id === ctx.state.user?.id) return false
+  return rejectRegularUserTaskAccess(ctx, board, taskId)
 }
 
 function taskAssigneeProfile(task: { assignee: string | null }): string {
@@ -145,7 +185,8 @@ function requestBoard(ctx: Context): string | null {
     return null
   }
   try {
-    return kanbanCli.normalizeBoardSlug(rawBoard)
+    const board = kanbanCli.normalizeBoardSlug(rawBoard)
+    return rejectBoardAccess(ctx, board) ? null : board
   } catch {
     ctx.status = 400
     ctx.body = { error: 'invalid board slug' }
@@ -261,7 +302,11 @@ export async function listBoards(ctx: Context) {
   const includeArchived = firstQueryValue(ctx.query.includeArchived as string | string[] | undefined) === 'true'
   try {
     const boards = await kanbanCli.listBoards({ includeArchived })
-    ctx.body = { boards }
+    ctx.body = { boards: boards.filter(board => boardIsVisible(ctx, board.slug)).map(board => {
+      if (!ctx.state?.user) return board
+      const scope = getKanbanBoardScope(board.slug)
+      return { ...board, profile: scope?.profile || null, can_archive: isProfileAdmin(ctx.state.user) }
+    }) }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -279,6 +324,13 @@ export async function createBoard(ctx: Context) {
   const color = optionalString(body.color, 'color')
   const switchCurrent = optionalBoolean(body.switchCurrent, 'switchCurrent')
   if (rejectBadRequest(ctx, slug.error || name.error || description.error || icon.error || color.error || switchCurrent.error)) return
+  const user = ctx.state?.user
+  const profile = requestedProfile(ctx) || (isSuperAdmin(user) ? DEFAULT_PROFILE : null)
+  if (user && !profile) {
+      ctx.status = 400
+      ctx.body = { error: 'Profile is required' }
+      return
+    }
   try {
     const board = await kanbanCli.createBoard({
       slug: slug.value!,
@@ -288,7 +340,12 @@ export async function createBoard(ctx: Context) {
       color: color.value,
       switchCurrent: switchCurrent.value,
     })
-    ctx.body = { board }
+    if (user && profile) {
+      setKanbanBoardScope(board.slug, profile, user.id)
+      ctx.body = { board: { ...board, profile, can_archive: isProfileAdmin(user) } }
+    } else {
+      ctx.body = { board }
+    }
   } catch (err: any) {
     ctx.status = err.message?.includes('Invalid kanban board slug') ? 400 : 500
     ctx.body = { error: err.message }
@@ -302,6 +359,8 @@ export async function archiveBoard(ctx: Context) {
     ctx.body = { error: 'slug is required' }
     return
   }
+  const scope = getKanbanBoardScope(slug)
+  if (scope && denyProfileAccess(ctx, scope.profile)) return
   try {
     await kanbanCli.archiveBoard(slug)
     ctx.body = { ok: true }
@@ -331,7 +390,7 @@ export async function list(ctx: Context) {
   try {
     const tasks = await getVisibleTasksForBoard(ctx, board, { status, assignee, tenant, includeArchived })
     if (ctx.status === 403) return
-    ctx.body = { tasks }
+    ctx.body = { tasks: tasks.map(task => presentTask(ctx, board, task)) }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -398,7 +457,7 @@ export async function get(ctx: Context) {
       }
     }
 
-    ctx.body = detail
+    ctx.body = { ...detail, task: presentTask(ctx, board, detail.task) }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -421,7 +480,8 @@ export async function create(ctx: Context) {
   if (!board) return
   try {
     const task = await kanbanCli.createTask(title.value!, { board, body: body.value, assignee: targetAssignee, priority: priority.value, tenant: tenant.value })
-    ctx.body = { task }
+    if (ctx.state?.user?.id) setKanbanTaskCreator(board, task.id, ctx.state.user.id)
+    ctx.body = { task: presentTask(ctx, board, task) }
   } catch (err: any) {
     ctx.status = 500
     ctx.body = { error: err.message }
@@ -644,7 +704,7 @@ export async function reclaim(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
-    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
+    if (await rejectRegularUserTaskTerminationAccess(ctx, board, ctx.params.id)) return
     ctx.body = await kanbanCli.reclaimTask(ctx.params.id, { board, reason: reason.value })
   } catch (err: any) {
     ctx.status = 500
@@ -664,7 +724,7 @@ export async function reassign(ctx: Context) {
   const board = requestBoard(ctx)
   if (!board) return
   try {
-    if (await rejectRegularUserTaskAccess(ctx, board, ctx.params.id)) return
+    if (await rejectRegularUserTaskTerminationAccess(ctx, board, ctx.params.id)) return
     ctx.body = await kanbanCli.reassignTask(ctx.params.id, profile.value!, { board, reclaim: reclaim.value, reason: reason.value })
   } catch (err: any) {
     ctx.status = 500
@@ -710,7 +770,11 @@ export async function dispatch(ctx: Context) {
         return
       }
     }
+    const readyTasks = dryRun.value ? [] : await kanbanCli.listTasks({ board, status: 'ready' })
     const result = await kanbanCli.dispatch({ board, dryRun: dryRun.value, max: max.value, failureLimit: failureLimit.value })
+    if (ctx.state?.user?.id && !dryRun.value) {
+      for (const task of readyTasks) setKanbanTaskDispatcher(board, task.id, ctx.state.user.id)
+    }
     ctx.body = { result }
   } catch (err: any) {
     ctx.status = 500

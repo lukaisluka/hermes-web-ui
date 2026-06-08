@@ -20,6 +20,7 @@ export interface KanbanTask {
   tenant: string | null
   result: string | null
   skills: string[] | null
+  can_manage?: boolean
 }
 
 export interface KanbanRun {
@@ -112,6 +113,8 @@ export interface KanbanBoard {
   is_current?: boolean
   counts: Record<string, number>
   total: number
+  profile?: string | null
+  can_archive?: boolean
 }
 
 export interface KanbanBoardCreateRequest {

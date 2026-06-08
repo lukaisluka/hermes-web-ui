@@ -246,10 +246,6 @@ function isTcpEndpoint(endpoint: string): boolean {
   return endpoint.startsWith('tcp://')
 }
 
-function isDesktopRuntime(): boolean {
-  return String(process.env.HERMES_DESKTOP || '').trim().toLowerCase() === 'true'
-}
-
 function shouldKillStaleIpcBridgeProcesses(): boolean {
   const raw = String(process.env.HERMES_AGENT_BRIDGE_KILL_STALE_IPC || '').trim().toLowerCase()
   return ['1', 'true', 'yes', 'on'].includes(raw)

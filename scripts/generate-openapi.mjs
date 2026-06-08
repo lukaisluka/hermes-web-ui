@@ -65,7 +65,6 @@ const tagMappings = {
   'routes/hermes/terminal.ts': { name: 'Terminal', description: 'WebSocket terminal' },
   'routes/hermes/proxy.ts': { name: 'Proxy', description: 'Gateway proxy' },
   'routes/health.ts': { name: 'Health', description: 'Health check' },
-  'routes/update.ts': { name: 'Update', description: 'Self-update management' },
   'routes/upload.ts': { name: 'Upload', description: 'File upload' },
   'routes/webhook.ts': { name: 'Webhook', description: 'Incoming webhooks' },
   'routes/auth.ts': { name: 'Auth', description: 'Authentication management' },
