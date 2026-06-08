@@ -16,7 +16,7 @@ assignees: ''
 
 ## Environment (if applicable)
 
-- Hermes Web UI Version:
+- Poiera Version:
 - Hermes Agent Version:
 - Operating System:
 - Node Version:

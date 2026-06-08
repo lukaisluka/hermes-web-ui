@@ -307,7 +307,7 @@ function handleNavigateTask(taskId: string) {
               <NSpin v-if="sessionLoading" :size="12" style="margin-left: 6px;" />
             </div>
             <div v-if="showSessions && sessionResults.length > 0" class="session-list">
-              <div v-for="session in sessionResults" :key="session.id" class="session-item" @click="router.push({ name: 'hermes.chat', query: { session: session.id } })">
+              <div v-for="session in sessionResults" :key="session.id" class="session-item" @click="router.push({ name: 'poiera.chat', query: { session: session.id } })">
                 <div class="session-title">{{ session.title || session.id }}</div>
                 <div class="session-meta">
                   <span>{{ session.source }}</span>

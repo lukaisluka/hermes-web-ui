@@ -8,7 +8,7 @@ describe('RouteLinkItem', () => {
   it('renders a real anchor with href from RouterLink custom slot', () => {
     const wrapper = mount(RouteLinkItem, {
       props: {
-        to: { name: 'hermes.session', params: { id: 's1' } },
+        to: { name: 'poiera.session', params: { id: 's1' } },
         active: true,
       },
       slots: {

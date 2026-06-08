@@ -19,7 +19,7 @@ export function useKeyboard() {
 
     if (mod && e.key === 'j') {
       e.preventDefault()
-      router.push({ name: 'hermes.jobs' })
+      router.push({ name: 'poiera.jobs' })
       return
     }
 

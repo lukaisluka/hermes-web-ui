@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import * as kanbanApi from '@/api/hermes/kanban'
 import type { KanbanTask, KanbanStats, KanbanAssignee, KanbanBoard, KanbanCapabilities, KanbanDiagnosticsOptions, KanbanDispatchOptions, KanbanBulkUpdateRequest } from '@/api/hermes/kanban'
 
-export const KANBAN_SELECTED_BOARD_STORAGE_KEY = 'hermes.kanban.selectedBoard'
+export const KANBAN_SELECTED_BOARD_STORAGE_KEY = 'poiera.kanban.selectedBoard'
 export const DEFAULT_KANBAN_BOARD = 'default'
 
 const BOARD_SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/

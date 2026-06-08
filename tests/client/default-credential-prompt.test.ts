@@ -6,7 +6,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 const mockPush = vi.hoisted(() => vi.fn())
 const mockFetchCurrentUser = vi.hoisted(() => vi.fn())
 const mockGetApiKey = vi.hoisted(() => vi.fn())
-const routeState = vi.hoisted(() => ({ fullPath: '/hermes/chat', name: 'hermes.chat' as any }))
+const routeState = vi.hoisted(() => ({ fullPath: '/poiera/chat', name: 'poiera.chat' as any }))
 
 vi.mock('vue-router', () => ({
   useRoute: () => routeState,
@@ -57,8 +57,8 @@ describe('DefaultCredentialPrompt', () => {
   beforeEach(() => {
     sessionStorage.clear()
     vi.clearAllMocks()
-    routeState.fullPath = '/hermes/chat'
-    routeState.name = 'hermes.chat'
+    routeState.fullPath = '/poiera/chat'
+    routeState.name = 'poiera.chat'
     mockGetApiKey.mockReturnValue('jwt-token')
   })
 
@@ -81,7 +81,7 @@ describe('DefaultCredentialPrompt', () => {
     expect(mockFetchCurrentUser).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('login.defaultCredentialMessage')
     await wrapper.findAll('button')[1].trigger('click')
-    expect(mockPush).toHaveBeenCalledWith({ name: 'hermes.settings', query: { tab: 'account' } })
+    expect(mockPush).toHaveBeenCalledWith({ name: 'poiera.settings', query: { tab: 'account' } })
   })
 
   it('does not prompt on the login route', async () => {

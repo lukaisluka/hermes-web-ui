@@ -14,7 +14,7 @@ const XAI_OAUTH_CLIENT_ID = 'b1a00492-073a-47ea-816f-4c329264a828'
 const XAI_OAUTH_SCOPE = 'openid profile email offline_access grok-cli:access api:access'
 const XAI_DEFAULT_BASE_URL = 'https://api.x.ai/v1'
 const XAI_REDIRECT_HOST = '127.0.0.1'
-const XAI_CALLBACK_BIND_HOST = process.env.HERMES_WEB_UI_XAI_CALLBACK_BIND_HOST?.trim() || XAI_REDIRECT_HOST
+const XAI_CALLBACK_BIND_HOST = process.env.POIERA_XAI_CALLBACK_BIND_HOST?.trim() || XAI_REDIRECT_HOST
 const XAI_REDIRECT_PORT = 56121
 const XAI_REDIRECT_PATH = '/callback'
 const POLL_MAX_DURATION = 15 * 60 * 1000
@@ -318,7 +318,7 @@ export async function start(ctx: any) {
       state,
       nonce,
       plan: 'generic',
-      referrer: 'hermes-web-ui',
+      referrer: 'poiera',
     }).toString()}`
     sessions.set(sessionId, {
       id: sessionId,

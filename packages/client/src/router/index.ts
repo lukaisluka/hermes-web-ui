@@ -11,115 +11,115 @@ const router = createRouter({
       meta: { public: true },
     },
     {
-      path: '/hermes/chat',
-      name: 'hermes.chat',
+      path: '/poiera/chat',
+      name: 'poiera.chat',
       component: () => import('@/views/hermes/ChatView.vue'),
     },
     {
-      path: '/hermes/session/:sessionId',
-      name: 'hermes.session',
+      path: '/poiera/session/:sessionId',
+      name: 'poiera.session',
       component: () => import('@/views/hermes/ChatView.vue'),
     },
     {
-      path: '/hermes/history',
-      name: 'hermes.history',
+      path: '/poiera/history',
+      name: 'poiera.history',
       component: () => import('@/views/hermes/HistoryView.vue'),
     },
     {
-      path: '/hermes/history/session/:sessionId',
-      name: 'hermes.historySession',
+      path: '/poiera/history/session/:sessionId',
+      name: 'poiera.historySession',
       component: () => import('@/views/hermes/HistoryView.vue'),
     },
     {
-      path: '/hermes/jobs',
-      name: 'hermes.jobs',
+      path: '/poiera/jobs',
+      name: 'poiera.jobs',
       component: () => import('@/views/hermes/JobsView.vue'),
     },
     {
-      path: '/hermes/kanban',
-      name: 'hermes.kanban',
+      path: '/poiera/kanban',
+      name: 'poiera.kanban',
       component: () => import('@/views/hermes/KanbanView.vue'),
     },
     {
-      path: '/hermes/models',
-      name: 'hermes.models',
+      path: '/poiera/models',
+      name: 'poiera.models',
       component: () => import('@/views/hermes/ModelsView.vue'),
       meta: { requiresProfileAdmin: true },
     },
     {
-      path: '/hermes/profiles',
-      name: 'hermes.profiles',
+      path: '/poiera/profiles',
+      name: 'poiera.profiles',
       component: () => import('@/views/hermes/ProfilesView.vue'),
       meta: { requiresSuperAdmin: true },
     },
     {
-      path: '/hermes/logs',
-      name: 'hermes.logs',
+      path: '/poiera/logs',
+      name: 'poiera.logs',
       component: () => import('@/views/hermes/LogsView.vue'),
       meta: { requiresProfileAdmin: true },
     },
     {
-      path: '/hermes/usage',
-      name: 'hermes.usage',
+      path: '/poiera/usage',
+      name: 'poiera.usage',
       component: () => import('@/views/hermes/UsageView.vue'),
     },
     {
-      path: '/hermes/performance',
-      name: 'hermes.performance',
+      path: '/poiera/performance',
+      name: 'poiera.performance',
       component: () => import('@/views/hermes/PerformanceView.vue'),
       meta: { requiresSuperAdmin: true },
     },
     {
-      path: '/hermes/skills-usage',
-      name: 'hermes.skillsUsage',
+      path: '/poiera/skills-usage',
+      name: 'poiera.skillsUsage',
       component: () => import('@/views/hermes/SkillsUsageView.vue'),
     },
     {
-      path: '/hermes/skills',
-      name: 'hermes.skills',
+      path: '/poiera/skills',
+      name: 'poiera.skills',
       component: () => import('@/views/hermes/SkillsView.vue'),
     },
     {
-      path: '/hermes/plugins',
-      name: 'hermes.plugins',
+      path: '/poiera/plugins',
+      name: 'poiera.plugins',
       component: () => import('@/views/hermes/PluginsView.vue'),
       meta: { requiresProfileAdmin: true },
     },
     {
-      path: '/hermes/memory',
-      name: 'hermes.memory',
+      path: '/poiera/memory',
+      name: 'poiera.memory',
       component: () => import('@/views/hermes/MemoryView.vue'),
       meta: { requiresProfileAdmin: true },
     },
     {
-      path: '/hermes/settings',
-      name: 'hermes.settings',
+      path: '/poiera/settings',
+      name: 'poiera.settings',
       component: () => import('@/views/hermes/SettingsView.vue'),
     },
     {
-      path: '/hermes/terminal',
-      name: 'hermes.terminal',
+      path: '/poiera/terminal',
+      name: 'poiera.terminal',
       component: () => import('@/views/hermes/TerminalView.vue'),
       meta: { requiresProfileAdmin: true },
     },
     {
-      path: '/hermes/group-chat',
-      name: 'hermes.groupChat',
+      path: '/poiera/group-chat',
+      name: 'poiera.groupChat',
       component: () => import('@/views/hermes/GroupChatView.vue'),
     },
     {
-      path: '/hermes/group-chat/room/:roomId',
-      name: 'hermes.groupChatRoom',
+      path: '/poiera/group-chat/room/:roomId',
+      name: 'poiera.groupChatRoom',
       component: () => import('@/views/hermes/GroupChatView.vue'),
     },
     {
-      path: '/hermes/files',
-      name: 'hermes.files',
+      path: '/poiera/files',
+      name: 'poiera.files',
       component: () => import('@/views/hermes/FilesView.vue'),
     },
     {
-      path: '/hermes/mcp',
-      name: 'hermes.mcp',
+      path: '/poiera/mcp',
+      name: 'poiera.mcp',
       component: () => import('@/views/hermes/McpManagerView.vue'),
     },
   ],
@@ -130,7 +130,7 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.public) {
     // Already has key, skip login
     if (to.name === 'login' && hasApiKey()) {
-      next({ path: '/hermes/chat' })
+      next({ path: '/poiera/chat' })
       return
     }
     next()
@@ -144,12 +144,12 @@ router.beforeEach((to, _from, next) => {
   }
 
   if (to.meta.requiresSuperAdmin && !isStoredSuperAdmin()) {
-    next({ name: 'hermes.chat' })
+    next({ name: 'poiera.chat' })
     return
   }
 
   if (to.meta.requiresProfileAdmin && !isStoredProfileAdmin()) {
-    next({ name: 'hermes.chat' })
+    next({ name: 'poiera.chat' })
     return
   }
 

@@ -46,7 +46,7 @@ describe('LoginView password login', () => {
 
     expect(mockLoginWithPassword).toHaveBeenCalledWith('admin', '123456')
     expect(mockSetApiKey).toHaveBeenCalledWith('jwt-token')
-    expect(mockReplaceAppRoute).toHaveBeenCalledWith('/hermes/chat')
+    expect(mockReplaceAppRoute).toHaveBeenCalledWith('/poiera/chat')
   })
 
   it('shows the default login hint', () => {
@@ -85,8 +85,8 @@ describe('LoginView password login', () => {
     expect(wrapper.find('.login-lock-hint').text()).toContain('login.defaultLoginResetHint')
     const commands = wrapper.findAll('.login-lock-hint code').map(command => command.text())
     expect(commands).toEqual([
-      'hermes-web-ui clear-login-locks --restart',
-      'hermes-web-ui reset-default-login',
+      'poiera clear-login-locks --restart',
+      'poiera reset-default-login',
     ])
   })
 })

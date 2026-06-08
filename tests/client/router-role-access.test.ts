@@ -32,31 +32,31 @@ describe('router role access', () => {
       configurable: true,
       value: () => false,
     })
-    await router.replace('/hermes/chat')
+    await router.replace('/poiera/chat')
   })
 
   it('redirects regular users away from management pages while allowing collaboration pages', async () => {
-    await router.push('/hermes/models')
-    expect(router.currentRoute.value.name).toBe('hermes.chat')
+    await router.push('/poiera/models')
+    expect(router.currentRoute.value.name).toBe('poiera.chat')
 
-    await router.push('/hermes/terminal')
-    expect(router.currentRoute.value.name).toBe('hermes.chat')
+    await router.push('/poiera/terminal')
+    expect(router.currentRoute.value.name).toBe('poiera.chat')
 
-    await router.push('/hermes/files')
-    expect(router.currentRoute.value.name).toBe('hermes.files')
+    await router.push('/poiera/files')
+    expect(router.currentRoute.value.name).toBe('poiera.files')
 
-    await router.push('/hermes/mcp')
-    expect(router.currentRoute.value.name).toBe('hermes.mcp')
+    await router.push('/poiera/mcp')
+    expect(router.currentRoute.value.name).toBe('poiera.mcp')
 
-    await router.push('/hermes/skills')
-    expect(router.currentRoute.value.name).toBe('hermes.skills')
+    await router.push('/poiera/skills')
+    expect(router.currentRoute.value.name).toBe('poiera.skills')
   })
 
   it('allows profile admins to open MCP management', async () => {
     setRole('admin')
 
-    await router.push('/hermes/mcp')
+    await router.push('/poiera/mcp')
 
-    expect(router.currentRoute.value.name).toBe('hermes.mcp')
+    expect(router.currentRoute.value.name).toBe('poiera.mcp')
   })
 })

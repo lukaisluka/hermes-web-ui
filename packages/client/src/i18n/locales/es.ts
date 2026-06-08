@@ -1,7 +1,7 @@
 export default {
   // Login
   login: {
-    title: 'Hermes Web UI',
+    title: 'Poiera',
     description: 'Introduce tu nombre de usuario y contrasena para continuar.',
     placeholder: 'Token de acceso',
     submit: 'Iniciar sesion',
@@ -1258,7 +1258,7 @@ jobTriggered: 'Job ejecutado',
     new_0_6_8_4: 'El sitio oficial y la distribucion mejoran con mirrors de descarga, deploy del sitio secuenciado despues del release de escritorio y limpieza de desktop smoke checks',
     new_0_6_8_5: 'La experiencia runtime mejora con longitudes de contexto preferidas por provider, borradores sin enviar preservados, fixes de overflow movil, puertos personalizados en SSH File Provider y acciones de preview no bloqueantes',
     new_0_6_7_1: 'La app de escritorio ahora usa el puerto 8748 por defecto, permite acceso desde la red local y puede abrirse directamente desde un navegador local',
-    new_0_6_7_9: 'Los enlaces de descarga de escritorio ya están disponibles en el sitio oficial https://github.com/lukaisluka/hermes-web-ui, y los instaladores más recientes siguen disponibles en GitHub Releases',
+    new_0_6_7_9: 'Los enlaces de descarga de escritorio ya están disponibles en el sitio oficial https://github.com/lukaisluka/poiera, y los instaladores más recientes siguen disponibles en GitHub Releases',
     new_0_6_7_2: 'Las herramientas MCP quedan más completas con arreglos de discovery en bridge, ciclo de vida de gestión MCP y controles de visibilidad por modelo en el gestor',
     new_0_6_7_3: 'Las listas de mensajes centran mejor el estado vacío, reducen saltos de scroll, evitan mostrar mensajes del chat activo mientras carga History, preservan la posición por sesión y hacen fade-in de 1,5 segundos al cambiar de sesión',
     new_0_6_7_4: 'Bridge y runtime son más estables al preservar el orden texto/tool-call, corregir la carga de estado runtime de Profile, mejorar detección Node/npm y evitar crear directorios de datos en producción',

@@ -51,7 +51,7 @@ function remindLater() {
 
 function goToAccountSettings() {
   show.value = false;
-  router.push({ name: "hermes.settings", query: { tab: "account" } });
+  router.push({ name: "poiera.settings", query: { tab: "account" } });
 }
 
 watch(() => route.fullPath, () => {

@@ -458,12 +458,12 @@ assert "compress-temp" not in broker._session_worker_key
 ${harness}
 
 prod_endpoint = bridge._worker_endpoint("default", "ipc:///tmp/hermes-agent-bridge.sock")
-preview_endpoint = bridge._worker_endpoint("default", "ipc:///tmp/hermes-web-ui-preview/agent-bridge.sock")
+preview_endpoint = bridge._worker_endpoint("default", "ipc:///tmp/poiera-preview/agent-bridge.sock")
 assert prod_endpoint != preview_endpoint
 assert prod_endpoint == bridge._worker_endpoint("default", "ipc:///tmp/hermes-agent-bridge.sock")
 
 prod_broker = bridge.BridgeBroker("ipc:///tmp/hermes-agent-bridge.sock")
-preview_broker = bridge.BridgeBroker("ipc:///tmp/hermes-web-ui-preview/agent-bridge.sock")
+preview_broker = bridge.BridgeBroker("ipc:///tmp/poiera-preview/agent-bridge.sock")
 prod_worker = prod_broker._worker_for_profile("default")
 preview_worker = preview_broker._worker_for_profile("default")
 assert prod_worker.endpoint != preview_worker.endpoint

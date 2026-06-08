@@ -50,14 +50,14 @@ function envValueFlagEnabled(value: unknown): boolean {
 }
 
 export function shouldUseManagedGatewayRun(): boolean {
-  return envFlagEnabled('HERMES_WEB_UI_MANAGED_GATEWAY') ||
+  return envFlagEnabled('POIERA_MANAGED_GATEWAY') ||
     isDockerRuntime() ||
     isTermuxRuntime() ||
     process.platform === 'win32'
 }
 
 export function shouldUseManagedGatewayRunForAutostart(platform: NodeJS.Platform = process.platform): boolean {
-  return envFlagEnabled('HERMES_WEB_UI_MANAGED_GATEWAY') ||
+  return envFlagEnabled('POIERA_MANAGED_GATEWAY') ||
     isDockerRuntime() ||
     isTermuxRuntime() ||
     platform === 'win32'

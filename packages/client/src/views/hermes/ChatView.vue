@@ -26,9 +26,9 @@ const routeProfile = computed(() => {
   return typeof value === 'string' && value.trim() ? value : null
 })
 
-const productTitle = 'Hermes Studio'
+const productTitle = 'Poiera'
 const tabTitle = computed(() => {
-  if (route.name !== 'hermes.session') return productTitle
+  if (route.name !== 'poiera.session') return productTitle
   return chatStore.activeSession?.title?.trim() || productTitle
 })
 
@@ -43,7 +43,7 @@ onUnmounted(() => {
 async function loadRouteSession() {
   await chatStore.loadSessions(chatStore.sessionProfileFilter, routeSessionId.value)
   if (routeSessionId.value && chatStore.activeSessionId !== routeSessionId.value) {
-    await router.replace({ name: 'hermes.chat' })
+    await router.replace({ name: 'poiera.chat' })
   }
 }
 

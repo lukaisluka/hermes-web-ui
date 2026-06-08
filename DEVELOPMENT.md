@@ -1,6 +1,6 @@
 # Development Guidelines
 
-This document defines project-level development rules for Hermes Web UI. It is tool-agnostic and applies to all contributors and coding agents.
+This document defines project-level development rules for Poiera. It is tool-agnostic and applies to all contributors and coding agents.
 
 ## Commands
 
@@ -26,7 +26,7 @@ npm run build
 - Hermes-specific client code stays under `hermes` namespaces: API modules, views, stores, and components.
 - Server routes should stay thin. Put request handling in controllers and reusable behavior in services.
 - The chat runtime is Socket.IO based and lives under `packages/server/src/services/hermes/run-chat`.
-- Web UI state lives under `HERMES_WEB_UI_HOME` or `HERMES_WEBUI_STATE_DIR`, defaulting to `~/.hermes-web-ui`.
+- Web UI state lives under `POIERA_HOME` or `POIERA_STATE_DIR`, defaulting to `~/.poiera`.
 
 ## Coding Rules
 

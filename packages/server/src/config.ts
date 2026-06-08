@@ -2,27 +2,27 @@ import { join, resolve } from 'path'
 import { homedir } from 'os'
 
 /**
- * Web UI environment variables.
+ * Poiera environment variables.
  *
  * Server/listen:
- * - PORT: Web UI listen port. Default: 8648.
- * - BIND_HOST: Web UI bind host. Default: 0.0.0.0.
+ * - PORT: Poiera listen port. Default: 8648.
+ * - BIND_HOST: Poiera bind host. Default: 0.0.0.0.
  * - CORS_ORIGINS: Koa CORS origin setting. Default: *.
  *
- * Web UI storage:
- * - HERMES_WEB_UI_HOME: Web UI data home for auth token, credentials, logs, DB, and default uploads.
- * - HERMES_WEBUI_STATE_DIR: Compatibility alias for HERMES_WEB_UI_HOME.
- *   Default: join(homedir(), '.hermes-web-ui').
- * - UPLOAD_DIR: Upload directory override. Default: join(HERMES_WEB_UI_HOME, 'upload').
- * - dataDir: Development-only internal Web UI runtime data directory.
+ * Poiera storage:
+ * - POIERA_HOME: Poiera data home for auth token, credentials, logs, DB, and default uploads.
+ * - POIERA_STATE_DIR: Alias for POIERA_HOME.
+ *   Default: join(homedir(), '.poiera').
+ * - UPLOAD_DIR: Upload directory override. Default: join(POIERA_HOME, 'upload').
+ * - dataDir: Development-only internal Poiera runtime data directory.
  *
  * Auth:
- * - AUTH_TOKEN: Explicit bearer token. If unset, Web UI stores an auto-generated token under HERMES_WEB_UI_HOME.
+ * - AUTH_TOKEN: Explicit bearer token. If unset, Poiera stores an auto-generated token under POIERA_HOME.
  *
  * Runtime behavior:
  * - PROFILE: Initial Hermes profile name. Default: default.
  * - GATEWAY_HOST: Default gateway host written into profile config. Default: 127.0.0.1.
- * - HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN: Whether Web UI shutdown also stops gateways.
+ * - POIERA_STOP_GATEWAYS_ON_SHUTDOWN: Whether Poiera shutdown also stops gateways.
  * - WORKSPACE_BASE: Base directory for workspace browsing. Default: /opt/data/workspace.
  *
  * Limits/logging:
@@ -38,8 +38,8 @@ export function getListenHost(env: Record<string, string | undefined> = process.
 }
 
 export function getWebUiHome(env: Record<string, string | undefined> = process.env): string {
-  const appHome = env.HERMES_WEB_UI_HOME?.trim() || env.HERMES_WEBUI_STATE_DIR?.trim()
-  return appHome ? resolve(appHome) : join(homedir(), '.hermes-web-ui')
+  const appHome = env.POIERA_HOME?.trim() || env.POIERA_STATE_DIR?.trim()
+  return appHome ? resolve(appHome) : join(homedir(), '.poiera')
 }
 
 export function shouldCreateWebUiDataDir(env: Record<string, string | undefined> = process.env): boolean {

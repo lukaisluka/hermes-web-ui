@@ -1,7 +1,7 @@
 export default {
   // 登录
   login: {
-    title: 'Hermes Web UI',
+    title: 'Poiera',
     description: '输入用户名和密码以继续。',
     placeholder: '访问令牌',
     submit: '登录',
@@ -1482,7 +1482,7 @@ export default {
     new_0_6_8_4: '官网与发布链路改进：新增下载镜像，桌面 release 后再部署官网，并清理桌面 smoke check 流程',
     new_0_6_8_5: '运行体验继续优化：优先使用 provider 上下文长度、保留未发送草稿、修复移动端布局溢出、SSH 文件 Provider 自定义端口和非阻塞预览操作',
     new_0_6_7_1: '桌面版默认使用 8748 端口，支持局域网内访问，也可以直接用本机浏览器打开 Web UI',
-    new_0_6_7_9: '桌面端下载入口已补充到官网 https://github.com/lukaisluka/hermes-web-ui，也可以继续从 GitHub Releases 获取最新安装包',
+    new_0_6_7_9: '桌面端下载入口已补充到官网 https://github.com/lukaisluka/poiera，也可以继续从 GitHub Releases 获取最新安装包',
     new_0_6_7_2: 'MCP 工具链继续完善：修复 bridge 工具发现与 MCP 管理生命周期，并在管理页支持按模型控制工具可见性',
     new_0_6_7_3: '消息列表体验优化：修复空状态居中、滚动抖动、历史会话加载串消息，并在切换会话时保留滚动位置与 1.5 秒淡入效果',
     new_0_6_7_4: 'Bridge 与运行态更稳定：保持文本和 tool-call 顺序、修复 Profile runtime 状态加载、改进 Node/npm 检测，并避免生产环境自动创建数据目录',

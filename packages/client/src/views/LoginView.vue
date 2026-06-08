@@ -14,7 +14,7 @@ const showLockResetHint = ref(false);
 
 // If already has a key, try to go to main page
 if (hasApiKey()) {
-  replaceAppRoute("/hermes/chat");
+  replaceAppRoute("/poiera/chat");
 }
 
 onMounted(async () => {
@@ -42,7 +42,7 @@ async function handlePasswordLogin() {
   try {
     const sessionToken = await loginWithPassword(username.value.trim(), password.value);
     setApiKey(sessionToken);
-    replaceAppRoute("/hermes/chat");
+    replaceAppRoute("/poiera/chat");
   } catch (err: any) {
     if (err.status === 429 || err.status === 503) {
       errorMsg.value = t("login.tooManyAttempts");
@@ -85,9 +85,9 @@ async function handlePasswordLogin() {
         <div v-if="errorMsg" class="login-error">{{ errorMsg }}</div>
         <div v-if="showLockResetHint" class="login-lock-hint">
           <span>{{ t("login.lockResetHint") }}</span>
-          <code>hermes-web-ui clear-login-locks --restart</code>
+          <code>poiera clear-login-locks --restart</code>
           <span>{{ t("login.defaultLoginResetHint") }}</span>
-          <code>hermes-web-ui reset-default-login</code>
+          <code>poiera reset-default-login</code>
         </div>
         <button type="submit" class="login-btn" :disabled="loading">
           {{ loading ? "..." : t("login.submit") }}

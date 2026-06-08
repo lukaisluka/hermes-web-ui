@@ -29,7 +29,7 @@ export class HermesSkillInjector {
   }
 
   static resolveSourceDir(env: NodeJS.ProcessEnv = process.env, baseDir = __dirname): string {
-    const override = env.HERMES_WEB_UI_SKILLS_DIR?.trim()
+    const override = env.POIERA_SKILLS_DIR?.trim()
     if (override) return resolve(override)
 
     const candidates = [

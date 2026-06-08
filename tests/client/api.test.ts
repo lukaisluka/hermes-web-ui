@@ -7,7 +7,7 @@ vi.stubGlobal('fetch', mockFetch)
 // vi.mock is hoisted, so mockReplace must be inside the factory
 vi.mock('@/router', () => ({
   default: {
-    currentRoute: { value: { name: 'hermes.chat' } },
+    currentRoute: { value: { name: 'poiera.chat' } },
     replace: vi.fn(),
   },
 }))

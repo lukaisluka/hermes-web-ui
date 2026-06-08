@@ -18,7 +18,7 @@ vi.mock('../../packages/server/src/services/hermes/hermes-profile', () => ({
 }))
 
 vi.mock('../../packages/server/src/services/hermes/upload-paths', () => ({
-  getProfileUploadDir: vi.fn((profile: string) => `/tmp/hermes-web-ui/upload/${profile}`),
+  getProfileUploadDir: vi.fn((profile: string) => `/tmp/poiera/upload/${profile}`),
 }))
 
 function multipartBody(boundary: string, name: string, content: string): Buffer {
@@ -53,10 +53,10 @@ describe('upload controller', () => {
 
     await handleUpload(ctx)
 
-    expect(mkdirMock).toHaveBeenCalledWith('/tmp/hermes-web-ui/upload/research', { recursive: true })
+    expect(mkdirMock).toHaveBeenCalledWith('/tmp/poiera/upload/research', { recursive: true })
     expect(writeFileMock).toHaveBeenCalledOnce()
     const [savedPath, data] = writeFileMock.mock.calls[0]
-    expect(savedPath).toMatch(/^\/tmp\/hermes-web-ui\/upload\/research\/[a-f0-9]+\.txt$/)
+    expect(savedPath).toMatch(/^\/tmp\/poiera\/upload\/research\/[a-f0-9]+\.txt$/)
     expect(data.toString('utf-8')).toBe('hello')
     expect(ctx.body.files[0]).toMatchObject({ name: 'note.txt', path: savedPath })
   })

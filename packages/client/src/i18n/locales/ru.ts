@@ -1,7 +1,7 @@
 export default {
 
   login: {
-    title: 'Hermes Web UI',
+    title: 'Poiera',
     description: 'Введите имя пользователя и пароль для продолжения.',
     placeholder: 'Токен доступа',
     submit: 'Войти',

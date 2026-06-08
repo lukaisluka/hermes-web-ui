@@ -481,7 +481,7 @@ class AgentClient {
                 : `${routedPrefix}\n\n原始消息：${stripMentionRoutingTokens(msg.content, this.name) || msg.content}`
             const runContext = [
                 `[Current Hermes profile: ${this.profile}]`,
-                'When calling Hermes Web UI endpoints from tools or skills, include the current Hermes profile as the X-Hermes-Profile header if the endpoint supports profile-scoped behavior.',
+                'When calling Poiera endpoints from tools or skills, include the current Hermes profile as the X-Hermes-Profile header if the endpoint supports profile-scoped behavior.',
             ].join('\n')
             instructions = instructions ? `${runContext}\n${instructions}` : runContext
             const bridgeInput: AgentBridgeMessage = isContentBlockArray(input)

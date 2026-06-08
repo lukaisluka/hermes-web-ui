@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>Hermes Web UI</strong>
+  <strong>Poiera</strong>
   <a href="./README.md">English</a>
 </p>
 
@@ -10,15 +10,15 @@
 </p>
 
 <p align="center">
-  <code>npm install -g hermes-web-ui && hermes-web-ui start</code>
+  <code>npm install -g poiera && poiera start</code>
 </p>
 
 <p align="center">
-  <img src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/image1.png" alt="Hermes Web UI 演示" width="680"/>
+  <img src="https://github.com/lukaisluka/poiera/blob/main/packages/client/src/assets/image1.png" alt="Poiera 演示" width="680"/>
 </p>
 
 <p align="center">
-  <img src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/image2.png" alt="Hermes Web UI 演示" width="680"/>
+  <img src="https://github.com/lukaisluka/poiera/blob/main/packages/client/src/assets/image2.png" alt="Poiera 演示" width="680"/>
 </p>
 
 <p align="center">
@@ -26,13 +26,13 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/video.mp4?raw=true" width="360" controls></video>
+  <video src="https://github.com/lukaisluka/poiera/blob/main/packages/client/src/assets/video.mp4?raw=true" width="360" controls></video>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/hermes-web-ui"><img src="https://img.shields.io/npm/v/hermes-web-ui?style=flat-square&color=blue" alt="npm 版本"/></a>
-  <a href="https://github.com/lukaisluka/hermes-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/hermes-web-ui?style=flat-square" alt="许可证"/></a>
-  <a href="https://github.com/lukaisluka/hermes-web-ui/stargazers"><img src="https://img.shields.io/github/stars/lukaisluka/hermes-web-ui?style=flat-square" alt="Star"/></a>
+  <a href="https://www.npmjs.com/package/poiera"><img src="https://img.shields.io/npm/v/poiera?style=flat-square&color=blue" alt="npm 版本"/></a>
+  <a href="https://github.com/lukaisluka/poiera/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/poiera?style=flat-square" alt="许可证"/></a>
+  <a href="https://github.com/lukaisluka/poiera/stargazers"><img src="https://img.shields.io/github/stars/lukaisluka/poiera?style=flat-square" alt="Star"/></a>
 </p>
 
 ---
@@ -128,16 +128,16 @@ CLI 维护命令：
 
 ```bash
 # 删除持久化的登录 IP 锁记录
-hermes-web-ui clear-login-locks
+poiera clear-login-locks
 
 # 删除登录锁并重启正在运行的 Web UI 进程
-hermes-web-ui clear-login-locks --restart
+poiera clear-login-locks --restart
 
 # 创建或重置默认超级管理员登录名/密码为 admin / 123456
-hermes-web-ui reset-default-login
+poiera reset-default-login
 ```
 
-`clear-login-locks` 会删除 `${HERMES_WEB_UI_HOME:-~/.hermes-web-ui}/.login-lock.json`。如果服务正在运行，需要重启服务才能清理内存中的锁定状态。`reset-default-login` 会更新 Web UI 账户数据库；如果已存在 `admin` 用户，则会把密码重置为 `123456`，并启用为超级管理员账户。
+`clear-login-locks` 会删除 `${POIERA_HOME:-~/.poiera}/.login-lock.json`。如果服务正在运行，需要重启服务才能清理内存中的锁定状态。`reset-default-login` 会更新 Web UI 账户数据库；如果已存在 `admin` 用户，则会把密码重置为 `123456`，并启用为超级管理员账户。
 
 ### 设置
 
@@ -163,8 +163,8 @@ hermes-web-ui reset-default-login
 ### npm 安装
 
 ```bash
-npm install -g hermes-web-ui
-hermes-web-ui start
+npm install -g poiera
+poiera start
 ```
 
 打开 **http://localhost:8648**
@@ -186,7 +186,7 @@ docker compose logs -f hermes-webui
 打开 **http://localhost:6060**
 
 - Hermes 持久化数据目录：`./hermes_data`
-- Web UI 认证 Token 存储在 `./hermes_data/hermes-web-ui/.token`
+- Web UI 认证 Token 存储在 `./poiera_data/.token`
 - 首次启动并开启认证时，Token 会打印到容器日志中
 - 运行参数全部由 `docker-compose.yml` 环境变量驱动
 
@@ -201,17 +201,17 @@ Web UI 启动后端聊天能力时，会优先使用包含 `run_agent.py` 的源
 
 ## Web UI 环境变量
 
-这些变量用于配置 Hermes Web UI、本地 Hermes runtime 集成以及开发/预览辅助能力。Provider API Key 和 Hermes Agent 相关设置通常仍通过 Hermes profile 管理；这里列出的变量是进程级覆盖项。
+这些变量用于配置 Poiera、本地 Hermes runtime 集成以及开发/预览辅助能力。Provider API Key 和 Hermes Agent 相关设置通常仍通过 Hermes profile 管理；这里列出的变量是进程级覆盖项。
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
 | `PORT` | `8648` | Web UI 监听端口。 |
 | `BIND_HOST` | `0.0.0.0` | Web UI 绑定地址。如需 IPv6，可显式设置为 `::`。 |
-| `HERMES_WEB_UI_HOME` | `~/.hermes-web-ui` | Web UI 数据目录，用于认证 token、登录凭据、日志、数据库和默认上传目录。兼容支持 `HERMES_WEBUI_STATE_DIR` 作为别名。 |
-| `HERMES_WEBUI_STATE_DIR` | 未设置 | `HERMES_WEB_UI_HOME` 的兼容别名。 |
-| `UPLOAD_DIR` | `$HERMES_WEB_UI_HOME/upload` | 覆盖上传根目录。文件会保存在按 Profile 隔离的子目录下。 |
+| `POIERA_HOME` | `~/.poiera` | Web UI 数据目录，用于认证 token、登录凭据、日志、数据库和默认上传目录。兼容支持 `POIERA_STATE_DIR` 作为别名。 |
+| `POIERA_STATE_DIR` | 未设置 | `POIERA_HOME` 的兼容别名。 |
+| `UPLOAD_DIR` | `$POIERA_HOME/upload` | 覆盖上传根目录。文件会保存在按 Profile 隔离的子目录下。 |
 | `CORS_ORIGINS` | `*` | Koa CORS origin 配置。 |
-| `AUTH_TOKEN` | 自动生成 | 显式指定 bearer token。未设置时，Web UI 会在 `HERMES_WEB_UI_HOME` 下自动生成。 |
+| `AUTH_TOKEN` | 自动生成 | 显式指定 bearer token。未设置时，Web UI 会在 `POIERA_HOME` 下自动生成。 |
 | `AUTH_JWT_SECRET` | `AUTH_TOKEN` | 用户名/密码会话的 JWT 签名密钥覆盖。 |
 | `PROFILE` | `default` | 启动/默认 Hermes profile。运行时请求使用前端当前选择且当前账号有权限访问的 Profile。 |
 | `LOG_LEVEL` | `info` | Server 日志级别。 |
@@ -239,32 +239,32 @@ Web UI 启动后端聊天能力时，会优先使用包含 `run_agent.py` 的源
 | `HERMES_BRIDGE_TOOLSETS` | profile/默认值 | bridge 运行时的 toolset 覆盖。 |
 | `HERMES_BRIDGE_MAX_TURNS` | profile/默认值 | bridge 运行时的最大轮数覆盖。 |
 | `HERMES_BRIDGE_SUPPRESS_PLATFORM_HINT` | `cli` | 控制传给 Hermes Agent 的 bridge platform hint suppression。 |
-| `HERMES_OPENROUTER_APP_REFERER` | `https://github.com/lukaisluka/hermes-web-ui` | bridge 运行发送给 OpenRouter 的 attribution referer。 |
-| `HERMES_OPENROUTER_APP_TITLE` | `Hermes Web UI` | bridge 运行发送给 OpenRouter 的 attribution title。 |
+| `HERMES_OPENROUTER_APP_REFERER` | `https://github.com/lukaisluka/poiera` | bridge 运行发送给 OpenRouter 的 attribution referer。 |
+| `HERMES_OPENROUTER_APP_TITLE` | `Poiera` | bridge 运行发送给 OpenRouter 的 attribution title。 |
 | `HERMES_OPENROUTER_APP_CATEGORIES` | `cli-agent,personal-agent` | bridge 运行发送给 OpenRouter 的 attribution categories。 |
-| `HERMES_WEB_UI_MANAGED_GATEWAY` | 由平台/运行环境决定 | 强制启用旧 gateway 进程托管；设为 `1`、`true`、`yes` 或 `on` 开启。 |
-| `HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART` | 未设置 | 跳过启动时的 gateway 检查/自动启动；dashboard-only 部署中如果由其它服务管理 Hermes gateway，可设为 `1`、`true`、`yes` 或 `on`。 |
-| `HERMES_WEB_UI_DISABLE_SKILL_INJECTION` | 未设置 | 跳过启动时的内置 skill 注入；如果内置 skills 由 Web UI 外部管理，或不希望覆盖同名目标目录，可设为 `1`、`true`、`yes` 或 `on`。 |
-| `HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN` | 生产环境默认开启 | Web UI 关闭时是否同时停止托管的 gateway 进程；设为 `0` 或 `false` 可让 gateway 分离运行。 |
+| `POIERA_MANAGED_GATEWAY` | 由平台/运行环境决定 | 强制启用旧 gateway 进程托管；设为 `1`、`true`、`yes` 或 `on` 开启。 |
+| `POIERA_DISABLE_GATEWAY_AUTOSTART` | 未设置 | 跳过启动时的 gateway 检查/自动启动；dashboard-only 部署中如果由其它服务管理 Hermes gateway，可设为 `1`、`true`、`yes` 或 `on`。 |
+| `POIERA_DISABLE_SKILL_INJECTION` | 未设置 | 跳过启动时的内置 skill 注入；如果内置 skills 由 Web UI 外部管理，或不希望覆盖同名目标目录，可设为 `1`、`true`、`yes` 或 `on`。 |
+| `POIERA_STOP_GATEWAYS_ON_SHUTDOWN` | 生产环境默认开启 | Web UI 关闭时是否同时停止托管的 gateway 进程；设为 `0` 或 `false` 可让 gateway 分离运行。 |
 | `GATEWAY_HOST` | `127.0.0.1` | 旧 gateway 兼容配置中写入 profile 的默认 gateway host。 |
-| `HERMES_WEB_UI_BACKEND_PORT` | `8648` | Vite dev proxy 使用的后端端口。 |
-| `HERMES_WEB_UI_FRONTEND_PORT` | `8649` | 前端 Vite dev server 端口。 |
+| `POIERA_BACKEND_PORT` | `8648` | Vite dev proxy 使用的后端端口。 |
+| `POIERA_FRONTEND_PORT` | `8649` | 前端 Vite dev server 端口。 |
 
 ### CLI 命令
 
 | 命令 | 说明 |
 |---|---|
-| `hermes-web-ui start` | 后台启动（守护进程模式） |
-| `hermes-web-ui start --port 9000` | 自定义端口启动 |
-| `hermes-web-ui stop` | 停止后台进程 |
-| `hermes-web-ui restart` | 重启后台进程 |
-| `hermes-web-ui status` | 查看运行状态 |
-| `hermes-web-ui update` | 更新到最新版本并重启 |
-| `hermes-web-ui upgrade` | `update` 的别名 |
-| `hermes-web-ui -v` | 显示版本号 |
-| `hermes-web-ui -h` | 显示帮助信息 |
+| `poiera start` | 后台启动（守护进程模式） |
+| `poiera start --port 9000` | 自定义端口启动 |
+| `poiera stop` | 停止后台进程 |
+| `poiera restart` | 重启后台进程 |
+| `poiera status` | 查看运行状态 |
+| `poiera update` | 更新到最新版本并重启 |
+| `poiera upgrade` | `update` 的别名 |
+| `poiera -v` | 显示版本号 |
+| `poiera -h` | 显示帮助信息 |
 
-`update` / `upgrade` 会先尝试执行 `npm cache clean --force`，再执行 `npm install -g hermes-web-ui@latest` 并重启。缓存清理是 best-effort；如果清理失败，只提示 warning，升级安装会继续执行。
+`update` / `upgrade` 会先尝试执行 `npm cache clean --force`，再执行 `npm install -g poiera@latest` 并重启。缓存清理是 best-effort；如果清理失败，只提示 warning，升级安装会继续执行。
 
 ### 自动配置
 
@@ -279,8 +279,8 @@ Web UI 启动后端聊天能力时，会优先使用包含 `run_agent.py` 的源
 ## 开发
 
 ```bash
-git clone https://github.com/lukaisluka/hermes-web-ui.git
-cd hermes-web-ui
+git clone https://github.com/lukaisluka/poiera.git
+cd poiera
 npm install
 npm run dev
 ```
@@ -319,9 +319,9 @@ BFF 层负责：Socket.IO 聊天流式推送、Hermes agent bridge、按 Profile
 
 ## Star 历史
 
-[![Star 历史图表](https://api.star-history.com/svg?repos=lukaisluka/hermes-web-ui&type=Date)](https://star-history.com/#lukaisluka/hermes-web-ui&Date)
+[![Star 历史图表](https://api.star-history.com/svg?repos=lukaisluka/poiera&type=Date)](https://star-history.com/#lukaisluka/poiera&Date)
 
-<!-- 如上方图表未加载，可访问 https://star-history.com/#lukaisluka/hermes-web-ui -->
+<!-- 如上方图表未加载，可访问 https://star-history.com/#lukaisluka/poiera -->
 
 ## 许可证
 

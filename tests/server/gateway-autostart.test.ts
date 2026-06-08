@@ -55,14 +55,14 @@ describe('gateway autostart status parsing', () => {
   })
 
   it('allows managed gateway mode to be forced by environment', () => {
-    const previous = process.env.HERMES_WEB_UI_MANAGED_GATEWAY
-    process.env.HERMES_WEB_UI_MANAGED_GATEWAY = '1'
+    const previous = process.env.POIERA_MANAGED_GATEWAY
+    process.env.POIERA_MANAGED_GATEWAY = '1'
     try {
       expect(shouldUseManagedGatewayRun()).toBe(true)
       expect(shouldUseManagedGatewayRunForAutostart()).toBe(true)
     } finally {
-      if (previous === undefined) delete process.env.HERMES_WEB_UI_MANAGED_GATEWAY
-      else process.env.HERMES_WEB_UI_MANAGED_GATEWAY = previous
+      if (previous === undefined) delete process.env.POIERA_MANAGED_GATEWAY
+      else process.env.POIERA_MANAGED_GATEWAY = previous
     }
   })
 

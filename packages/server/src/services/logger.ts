@@ -8,7 +8,7 @@ const MAX_LOG_SIZE = 3 * 1024 * 1024 // 3MB
 const CHECK_INTERVAL = 60_000 // Check every minute
 
 const logDir = process.env.VITEST
-  ? resolve(tmpdir(), 'hermes-web-ui-test-logs', String(process.pid))
+  ? resolve(tmpdir(), 'poiera-test-logs', String(process.pid))
   : resolve(config.appHome, 'logs')
 mkdirSync(logDir, { recursive: true })
 

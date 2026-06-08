@@ -39,7 +39,7 @@ All key runtime settings are configured from compose variables.
 | `BIND_HOST` | `0.0.0.0` | Optional Web UI bind host. Defaults to IPv4 for stable WSL/Windows access. Set `::` explicitly if you want IPv6 listening. |
 | `HERMES_BIN` | `/opt/hermes/.venv/bin/hermes` | Path to Hermes CLI binary |
 | `HERMES_AGENT_IMAGE` | `nousresearch/hermes-agent:latest` | Hermes Agent base image (used only during build) |
-| `WEBUI_IMAGE` | `hermes-web-ui-local:latest` | Web UI image. Set this explicitly when using an image published by your deployment. |
+| `POIERA_IMAGE` | `poiera-local:latest` | Web UI image. Set this explicitly when using an image published by your deployment. |
 | `HERMES_DATA_DIR` | `./hermes_data` | Hermes runtime data directory |
 
 Override variables directly from shell:
@@ -51,7 +51,7 @@ PORT=16060 docker compose up -d
 Or create a `.env` file in the project root:
 
 ```
-WEBUI_IMAGE=your-registry/hermes-web-ui:latest
+POIERA_IMAGE=your-registry/poiera:latest
 PORT=6060
 ```
 
@@ -60,10 +60,10 @@ PORT=6060
 | Path | Description |
 |---|---|
 | `${HERMES_DATA_DIR}` (`./hermes_data`) | Hermes runtime data (sessions, config, profiles) |
-| `${HERMES_DATA_DIR}/hermes-web-ui` | Web UI data (auth token, etc.) |
+| `${POIERA_DATA_DIR}` | Web UI data (auth token, etc.) |
 
 - Hermes data persists in `./hermes_data`, mapped to `/home/agent/.hermes` in the container.
-- Web UI data persists in `./hermes_data/hermes-web-ui/`, mapped to `/home/agent/.hermes-web-ui` in the container.
+- Web UI data persists in `./poiera_data/`, mapped to `/home/agent/.poiera` in the container.
 - The auth token is auto-generated on first run and printed to container logs.
 - Deleting the token file and restarting will generate a new one.
 
@@ -95,7 +95,7 @@ View auth token:
 ```bash
 docker compose logs hermes-webui | grep token
 # or
-cat ./hermes_data/hermes-web-ui/.token
+cat ./poiera_data/.token
 ```
 
 Stop:

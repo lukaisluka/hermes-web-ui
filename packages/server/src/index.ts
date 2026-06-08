@@ -88,16 +88,16 @@ function envFlagEnabled(name: string): boolean {
 }
 
 function gatewayAutostartDisabled(): boolean {
-  return envFlagEnabled('HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART')
+  return envFlagEnabled('POIERA_DISABLE_GATEWAY_AUTOSTART')
 }
 
 function skillInjectionDisabled(): boolean {
-  return envFlagEnabled('HERMES_WEB_UI_DISABLE_SKILL_INJECTION')
+  return envFlagEnabled('POIERA_DISABLE_SKILL_INJECTION')
 }
 
 async function startRuntimeServicesBeforeListen(): Promise<void> {
   if (gatewayAutostartDisabled()) {
-    console.log('[bootstrap] profile gateway check disabled by HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART')
+    console.log('[bootstrap] profile gateway check disabled by POIERA_DISABLE_GATEWAY_AUTOSTART')
   } else {
     try {
       await ensureProfileGatewaysRunning()
@@ -118,7 +118,7 @@ async function startRuntimeServicesBeforeListen(): Promise<void> {
 }
 
 export async function bootstrap() {
-  console.log(`hermes-web-ui v${APP_VERSION} starting...`)
+  console.log(`poiera v${APP_VERSION} starting...`)
   await mkdir(config.uploadDir, { recursive: true })
   if (shouldCreateWebUiDataDir()) {
     await mkdir(config.dataDir, { recursive: true })
@@ -126,7 +126,7 @@ export async function bootstrap() {
 
   await initLoginLimiter()
   if (skillInjectionDisabled()) {
-    console.log('[bootstrap] bundled skill injection disabled by HERMES_WEB_UI_DISABLE_SKILL_INJECTION')
+    console.log('[bootstrap] bundled skill injection disabled by POIERA_DISABLE_SKILL_INJECTION')
   } else {
     try {
       const skillInjector = new HermesSkillInjector()
@@ -248,7 +248,7 @@ export async function bootstrap() {
 }
 
 bootstrap().catch((error) => {
-  console.error('FATAL: Failed to start Hermes Web UI')
+  console.error('FATAL: Failed to start Poiera')
   console.error(error)
   logger.fatal(error, 'Fatal error during bootstrap')
   process.exit(1)

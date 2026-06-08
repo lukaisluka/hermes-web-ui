@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>Hermes Web UI</strong>
+  <strong>Poiera</strong>
   <a href="./README_zh.md">中文</a>
 </p>
 
@@ -10,21 +10,21 @@
 </p>
 
 <p align="center">
-  <code>npm install -g hermes-web-ui && hermes-web-ui start</code>
+  <code>npm install -g poiera && poiera start</code>
 </p>
 
 <p align="center">
-  <img src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/image1.png" alt="Hermes Web UI Demo" width="680"/>
+  <img src="https://github.com/lukaisluka/poiera/blob/main/packages/client/src/assets/image1.png" alt="Poiera Demo" width="680"/>
 </p>
 
 <p align="center">
-  <img src="https://github.com/lukaisluka/hermes-web-ui/blob/main/packages/client/src/assets/image2.png" alt="Hermes Web UI Demo" width="680"/>
+  <img src="https://github.com/lukaisluka/poiera/blob/main/packages/client/src/assets/image2.png" alt="Poiera Demo" width="680"/>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/hermes-web-ui"><img src="https://img.shields.io/npm/v/hermes-web-ui?style=flat-square&color=blue" alt="npm version"/></a>
-  <a href="https://github.com/lukaisluka/hermes-web-ui/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/hermes-web-ui?style=flat-square" alt="license"/></a>
-  <a href="https://github.com/lukaisluka/hermes-web-ui/stargazers"><img src="https://img.shields.io/github/stars/lukaisluka/hermes-web-ui?style=flat-square" alt="stars"/></a>
+  <a href="https://www.npmjs.com/package/poiera"><img src="https://img.shields.io/npm/v/poiera?style=flat-square&color=blue" alt="npm version"/></a>
+  <a href="https://github.com/lukaisluka/poiera/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/poiera?style=flat-square" alt="license"/></a>
+  <a href="https://github.com/lukaisluka/poiera/stargazers"><img src="https://img.shields.io/github/stars/lukaisluka/poiera?style=flat-square" alt="stars"/></a>
 </p>
 
 ---
@@ -120,16 +120,16 @@ CLI maintenance commands:
 
 ```bash
 # Delete persisted login IP lock records
-hermes-web-ui clear-login-locks
+poiera clear-login-locks
 
 # Delete login locks and restart the running Web UI process
-hermes-web-ui clear-login-locks --restart
+poiera clear-login-locks --restart
 
 # Create or reset the default super administrator login to admin / 123456
-hermes-web-ui reset-default-login
+poiera reset-default-login
 ```
 
-`clear-login-locks` removes `${HERMES_WEB_UI_HOME:-~/.hermes-web-ui}/.login-lock.json`. If the server is running, restart it to clear in-memory lock state. `reset-default-login` updates the Web UI account database; if an `admin` user already exists, its password is reset to `123456` and the account is enabled as a super administrator.
+`clear-login-locks` removes `${POIERA_HOME:-~/.poiera}/.login-lock.json`. If the server is running, restart it to clear in-memory lock state. `reset-default-login` updates the Web UI account database; if an `admin` user already exists, its password is reset to `123456` and the account is enabled as a super administrator.
 
 ### Settings
 
@@ -155,8 +155,8 @@ hermes-web-ui reset-default-login
 ### npm
 
 ```bash
-npm install -g hermes-web-ui
-hermes-web-ui start
+npm install -g poiera
+poiera start
 ```
 
 Open **http://localhost:8648**
@@ -178,7 +178,7 @@ docker compose logs -f hermes-webui
 Open **http://localhost:6060**
 
 - Persistent Hermes data is stored in `./hermes_data`
-- Web UI auth token is stored in `./hermes_data/hermes-web-ui/.token`
+- Web UI auth token is stored in `./poiera_data/.token`
 - On first run with auth enabled, the token is printed to container logs
 - All runtime settings are environment-variable driven in `docker-compose.yml`
 
@@ -194,17 +194,17 @@ and package installs such as `pip install hermes-agent`.
 
 ## Web UI Environment Variables
 
-These variables configure Hermes Web UI, its local Hermes runtime integration, and development/preview helpers. Provider API keys and Hermes Agent settings are normally managed through Hermes profiles; environment variables here are process-level overrides.
+These variables configure Poiera, its local Hermes runtime integration, and development/preview helpers. Provider API keys and Hermes Agent settings are normally managed through Hermes profiles; environment variables here are process-level overrides.
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `8648` | Web UI listen port. |
 | `BIND_HOST` | `0.0.0.0` | Web UI bind host. Set `::` explicitly for IPv6. |
-| `HERMES_WEB_UI_HOME` | `~/.hermes-web-ui` | Web UI data home for auth token, credentials, logs, DB, and default uploads. `HERMES_WEBUI_STATE_DIR` is also supported as a compatibility alias. |
-| `HERMES_WEBUI_STATE_DIR` | unset | Compatibility alias for `HERMES_WEB_UI_HOME`. |
-| `UPLOAD_DIR` | `$HERMES_WEB_UI_HOME/upload` | Upload root override. Files are stored below profile-scoped subdirectories. |
+| `POIERA_HOME` | `~/.poiera` | Web UI data home for auth token, credentials, logs, DB, and default uploads. `POIERA_STATE_DIR` is also supported as a compatibility alias. |
+| `POIERA_STATE_DIR` | unset | Compatibility alias for `POIERA_HOME`. |
+| `UPLOAD_DIR` | `$POIERA_HOME/upload` | Upload root override. Files are stored below profile-scoped subdirectories. |
 | `CORS_ORIGINS` | `*` | Koa CORS origin setting. |
-| `AUTH_TOKEN` | auto-generated | Explicit bearer token. If unset, Web UI creates one under `HERMES_WEB_UI_HOME`. |
+| `AUTH_TOKEN` | auto-generated | Explicit bearer token. If unset, Web UI creates one under `POIERA_HOME`. |
 | `AUTH_JWT_SECRET` | `AUTH_TOKEN` | JWT signing secret override for username/password sessions. |
 | `PROFILE` | `default` | Startup/default Hermes profile. Runtime requests use the profile selected by the frontend and authorized for the current account. |
 | `LOG_LEVEL` | `info` | Server log level. |
@@ -232,32 +232,32 @@ These variables configure Hermes Web UI, its local Hermes runtime integration, a
 | `HERMES_BRIDGE_TOOLSETS` | profile/default | Toolset override for bridge runs. |
 | `HERMES_BRIDGE_MAX_TURNS` | profile/default | Maximum turn override for bridge runs. |
 | `HERMES_BRIDGE_SUPPRESS_PLATFORM_HINT` | `cli` | Controls bridge platform hint suppression passed to Hermes Agent. |
-| `HERMES_OPENROUTER_APP_REFERER` | `https://github.com/lukaisluka/hermes-web-ui` | OpenRouter attribution referer sent by bridge runs. |
-| `HERMES_OPENROUTER_APP_TITLE` | `Hermes Web UI` | OpenRouter attribution title sent by bridge runs. |
+| `HERMES_OPENROUTER_APP_REFERER` | `https://github.com/lukaisluka/poiera` | OpenRouter attribution referer sent by bridge runs. |
+| `HERMES_OPENROUTER_APP_TITLE` | `Poiera` | OpenRouter attribution title sent by bridge runs. |
 | `HERMES_OPENROUTER_APP_CATEGORIES` | `cli-agent,personal-agent` | OpenRouter attribution categories sent by bridge runs. |
-| `HERMES_WEB_UI_MANAGED_GATEWAY` | platform/runtime dependent | Force managed legacy gateway process handling. Set `1`, `true`, `yes`, or `on` to enable. |
-| `HERMES_WEB_UI_DISABLE_GATEWAY_AUTOSTART` | unset | Skip startup gateway checks/autostart. Set `1`, `true`, `yes`, or `on` for dashboard-only deployments where another service owns Hermes gateway lifecycle. |
-| `HERMES_WEB_UI_DISABLE_SKILL_INJECTION` | unset | Skip startup bundled skill injection. Set `1`, `true`, `yes`, or `on` when bundled skills are managed outside Web UI or target skill directories must not be overwritten. |
-| `HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN` | enabled in production | Controls whether Web UI shutdown also stops managed gateway processes. Set `0` or `false` to detach them. |
+| `POIERA_MANAGED_GATEWAY` | platform/runtime dependent | Force managed legacy gateway process handling. Set `1`, `true`, `yes`, or `on` to enable. |
+| `POIERA_DISABLE_GATEWAY_AUTOSTART` | unset | Skip startup gateway checks/autostart. Set `1`, `true`, `yes`, or `on` for dashboard-only deployments where another service owns Hermes gateway lifecycle. |
+| `POIERA_DISABLE_SKILL_INJECTION` | unset | Skip startup bundled skill injection. Set `1`, `true`, `yes`, or `on` when bundled skills are managed outside Web UI or target skill directories must not be overwritten. |
+| `POIERA_STOP_GATEWAYS_ON_SHUTDOWN` | enabled in production | Controls whether Web UI shutdown also stops managed gateway processes. Set `0` or `false` to detach them. |
 | `GATEWAY_HOST` | `127.0.0.1` | Default gateway host written into profile config for legacy gateway compatibility. |
-| `HERMES_WEB_UI_BACKEND_PORT` | `8648` | Backend port used by the Vite dev proxy. |
-| `HERMES_WEB_UI_FRONTEND_PORT` | `8649` | Frontend Vite dev server port. |
+| `POIERA_BACKEND_PORT` | `8648` | Backend port used by the Vite dev proxy. |
+| `POIERA_FRONTEND_PORT` | `8649` | Frontend Vite dev server port. |
 
 ### CLI Commands
 
 | Command                           | Description                        |
 | --------------------------------- | ---------------------------------- |
-| `hermes-web-ui start`             | Start in background (daemon mode)  |
-| `hermes-web-ui start --port 9000` | Start on custom port               |
-| `hermes-web-ui stop`              | Stop background process            |
-| `hermes-web-ui restart`           | Restart background process         |
-| `hermes-web-ui status`            | Check if running                   |
-| `hermes-web-ui update`            | Update to latest version & restart |
-| `hermes-web-ui upgrade`           | Alias for `update`                 |
-| `hermes-web-ui -v`                | Show version number                |
-| `hermes-web-ui -h`                | Show help message                  |
+| `poiera start`             | Start in background (daemon mode)  |
+| `poiera start --port 9000` | Start on custom port               |
+| `poiera stop`              | Stop background process            |
+| `poiera restart`           | Restart background process         |
+| `poiera status`            | Check if running                   |
+| `poiera update`            | Update to latest version & restart |
+| `poiera upgrade`           | Alias for `update`                 |
+| `poiera -v`                | Show version number                |
+| `poiera -h`                | Show help message                  |
 
-`update` / `upgrade` first attempt `npm cache clean --force`, then run `npm install -g hermes-web-ui@latest` and restart. Cache cleanup is best-effort; if it fails, the updater continues with the install.
+`update` / `upgrade` first attempt `npm cache clean --force`, then run `npm install -g poiera@latest` and restart. Cache cleanup is best-effort; if it fails, the updater continues with the install.
 
 ### Auto Configuration
 
@@ -272,8 +272,8 @@ On startup the BFF server automatically:
 ## Development
 
 ```bash
-git clone https://github.com/lukaisluka/hermes-web-ui.git
-cd hermes-web-ui
+git clone https://github.com/lukaisluka/poiera.git
+cd poiera
 npm install
 npm run dev
 ```
@@ -312,9 +312,9 @@ The BFF layer handles Socket.IO chat streaming, the Hermes agent bridge, profile
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=lukaisluka/hermes-web-ui&type=Date)](https://star-history.com/#lukaisluka/hermes-web-ui&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=lukaisluka/poiera&type=Date)](https://star-history.com/#lukaisluka/poiera&Date)
 
-<!-- If the chart above doesn't load, visit https://star-history.com/#lukaisluka/hermes-web-ui -->
+<!-- If the chart above doesn't load, visit https://star-history.com/#lukaisluka/poiera -->
 
 ## License
 

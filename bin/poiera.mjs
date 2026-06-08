@@ -12,15 +12,15 @@ const serverEntry = resolve(__dirname, '..', 'dist', 'server', 'index.js')
 const pkgDir = resolve(__dirname, '..')
 const pkg = JSON.parse(readFileSync(resolve(pkgDir, 'package.json'), 'utf-8'))
 const VERSION = pkg.version
-const WEB_UI_HOME = process.env.HERMES_WEB_UI_HOME?.trim()
-  ? resolve(process.env.HERMES_WEB_UI_HOME.trim())
-  : resolve(homedir(), '.hermes-web-ui')
+const WEB_UI_HOME = process.env.POIERA_HOME?.trim()
+  ? resolve(process.env.POIERA_HOME.trim())
+  : resolve(homedir(), '.poiera')
 const PID_DIR = WEB_UI_HOME
 const PID_FILE = join(PID_DIR, 'server.pid')
 const LOG_FILE = join(PID_DIR, 'server.log')
 const TOKEN_FILE = join(PID_DIR, '.token')
 const LOGIN_LOCK_FILE = join(WEB_UI_HOME, '.login-lock.json')
-const WEB_UI_DB_FILE = join(WEB_UI_HOME, 'hermes-web-ui.db')
+const WEB_UI_DB_FILE = join(WEB_UI_HOME, 'poiera.db')
 const DEFAULT_PORT = 8648
 const PREVIEW_BACKEND_PORT = 8650
 const PREVIEW_FRONTEND_PORT = 8651
@@ -39,9 +39,9 @@ function envPositiveInt(name) {
 function getDaemonStopGraceMs(options = {}) {
   const { restart = false } = options
   if (restart) {
-    return envPositiveInt('HERMES_WEB_UI_RESTART_GRACE_MS') ?? DEFAULT_RESTART_GRACE_MS
+    return envPositiveInt('POIERA_RESTART_GRACE_MS') ?? DEFAULT_RESTART_GRACE_MS
   }
-  return envPositiveInt('HERMES_WEB_UI_STOP_GRACE_MS') ?? DEFAULT_STOP_GRACE_MS
+  return envPositiveInt('POIERA_STOP_GRACE_MS') ?? DEFAULT_STOP_GRACE_MS
 }
 
 // ─── Auto-fix node-pty native module ──────────────────────────
@@ -101,8 +101,8 @@ function getGlobalPrefix() {
 function getGlobalCliBin() {
   const prefix = getGlobalPrefix()
   return process.platform === 'win32'
-    ? join(prefix, 'hermes-web-ui.cmd')
-    : join(prefix, 'bin', 'hermes-web-ui')
+    ? join(prefix, 'poiera.cmd')
+    : join(prefix, 'bin', 'poiera')
 }
 
 function getWindowsShell() {
@@ -362,8 +362,8 @@ function removePid() {
 function startDaemon(port) {
   const existing = getPid()
   if (existing && isRunning(existing)) {
-    console.log(`  ✗ hermes-web-ui is already running (PID: ${existing})`)
-    console.log(`    Use "hermes-web-ui stop" to stop it first`)
+    console.log(`  ✗ poiera is already running (PID: ${existing})`)
+    console.log(`    Use "poiera stop" to stop it first`)
     process.exit(1)
   }
   removePid()
@@ -424,12 +424,12 @@ function startDaemon(port) {
   const interval = 500
   let waited = 0
 
-  console.log(`  ⏳ Starting hermes-web-ui (PID: ${child.pid}, port: ${port})...`)
+  console.log(`  ⏳ Starting poiera (PID: ${child.pid}, port: ${port})...`)
 
   function poll() {
     waited += interval
     if (!isRunning(child.pid)) {
-      console.log('  ✗ Failed to start hermes-web-ui')
+      console.log('  ✗ Failed to start poiera')
       console.log(`    Check log: ${LOG_FILE}`)
       removePid()
       process.exit(1)
@@ -443,7 +443,7 @@ function startDaemon(port) {
           writePid(listeningPid)
         }
         const url = `http://localhost:${port}`
-        console.log(`  ✓ hermes-web-ui started`)
+        console.log(`  ✓ poiera started`)
         console.log(`    ${url}`)
         console.log(`    Log: ${LOG_FILE}`)
         const isWin = process.platform === 'win32'
@@ -479,7 +479,7 @@ function stopDaemon(options = {}) {
   let cleanedStalePid = false
   if (pidFromFile && !isRunning(pidFromFile)) {
     removePid()
-    console.log(`  ✓ hermes-web-ui was not running (cleaned stale PID: ${pidFromFile})`)
+    console.log(`  ✓ poiera was not running (cleaned stale PID: ${pidFromFile})`)
     pidFromFile = null
     cleanedStalePid = true
   }
@@ -488,16 +488,16 @@ function stopDaemon(options = {}) {
   if (!pid) {
     if (cleanedStalePid) return
     if (stoppedPreviewPids) {
-      console.log(`  ✓ hermes-web-ui preview stopped`)
+      console.log(`  ✓ poiera preview stopped`)
       return
     }
-    console.log('  ✗ hermes-web-ui is not running')
+    console.log('  ✗ poiera is not running')
     process.exit(1)
   }
 
   if (!isRunning(pid)) {
     removePid()
-    console.log(`  ✓ hermes-web-ui was not running (cleaned stale PID)`)
+    console.log(`  ✓ poiera was not running (cleaned stale PID)`)
     return
   }
 
@@ -522,7 +522,7 @@ function stopDaemon(options = {}) {
       }
     }
     removePid()
-    console.log(`  ✓ hermes-web-ui stopped (PID: ${pid})`)
+    console.log(`  ✓ poiera stopped (PID: ${pid})`)
   } catch (err) {
     console.log(`  ✗ Failed to stop: ${err.message}`)
     process.exit(1)
@@ -532,11 +532,11 @@ function stopDaemon(options = {}) {
 function showStatus() {
   const pid = getPid()
   if (pid && isRunning(pid)) {
-    console.log(`  ✓ hermes-web-ui is running (PID: ${pid})`)
+    console.log(`  ✓ poiera is running (PID: ${pid})`)
     console.log(`    PID file: ${PID_FILE}`)
   } else {
     if (pid) removePid()
-    console.log('  ✗ hermes-web-ui is not running')
+    console.log('  ✗ poiera is not running')
   }
 }
 
@@ -559,8 +559,8 @@ function clearLoginLocks(options = {}) {
   }
 
   if (!silent && serverRunning) {
-    console.log('  ⚠ hermes-web-ui is running; restart it to clear in-memory login locks.')
-    console.log('    Run: hermes-web-ui restart')
+    console.log('  ⚠ poiera is running; restart it to clear in-memory login locks.')
+    console.log('    Run: poiera restart')
   }
 
   return { path: LOGIN_LOCK_FILE, removed, serverRunning }
@@ -625,15 +625,15 @@ async function main() {
   const command = process.argv[2] || 'start'
 
   if (['-v', '--version', 'version'].includes(command)) {
-    console.log(`hermes-web-ui v${VERSION}`)
+    console.log(`poiera v${VERSION}`)
     process.exit(0)
   }
 
   if (['-h', '--help', 'help'].includes(command)) {
     console.log(`
-hermes-web-ui v${VERSION}
+poiera v${VERSION}
 
-Usage: hermes-web-ui <command> [options]
+Usage: poiera <command> [options]
 
 Commands:
   start [port]       Start the server (default port: ${DEFAULT_PORT})
@@ -711,7 +711,7 @@ Options:
 }
 
 function doUpdate() {
-  console.log('  ⬆ Updating hermes-web-ui...')
+  console.log('  ⬆ Updating poiera...')
 
   const npm = getNpmBin()
   try {
@@ -728,7 +728,7 @@ function doUpdate() {
 }
 
 function runUpdateInstall(npm) {
-  const child = spawnCli(npm, ['install', '-g', 'hermes-web-ui@latest'], {
+  const child = spawnCli(npm, ['install', '-g', 'poiera@latest'], {
     stdio: 'inherit',
     windowsHide: true,
     env: getCurrentNodeEnv(),

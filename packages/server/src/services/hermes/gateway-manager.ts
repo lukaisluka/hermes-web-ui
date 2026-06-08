@@ -175,13 +175,13 @@ function isLocalHost(host: string): boolean {
 function shouldDetachGatewayProcess(): boolean {
   // In dev mode (nodemon), always detach gateway processes so they survive restarts
   // Production mode: attach gateways so they can be managed together with the server
-  const override = process.env.HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN?.trim().toLowerCase()
+  const override = process.env.POIERA_STOP_GATEWAYS_ON_SHUTDOWN?.trim().toLowerCase()
   const shouldDetach = override === '0' || override === 'false'
 
   if (shouldDetach) {
-    console.log('[gateway] Detaching gateway process (dev mode: HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN=' + override + ')')
+    console.log('[gateway] Detaching gateway process (dev mode: POIERA_STOP_GATEWAYS_ON_SHUTDOWN=' + override + ')')
   } else {
-    console.log('[gateway] Attaching gateway process (prod mode: HERMES_WEB_UI_STOP_GATEWAYS_ON_SHUTDOWN=' + (override || 'not set') + ')')
+    console.log('[gateway] Attaching gateway process (prod mode: POIERA_STOP_GATEWAYS_ON_SHUTDOWN=' + (override || 'not set') + ')')
   }
 
   return shouldDetach

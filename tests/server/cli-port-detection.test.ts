@@ -19,7 +19,7 @@ async function loadCli(overrides: Partial<ChildProcessMocks> = {}) {
   vi.resetModules()
   vi.doMock('child_process', () => ({ execFileSync, execSync, spawn }))
 
-  const mod = await import('../../bin/hermes-web-ui.mjs')
+  const mod = await import('../../bin/poiera.mjs')
   return {
     ...mod,
     mocks: { execFileSync, execSync, spawn },
@@ -106,8 +106,8 @@ describe('CLI port detection', () => {
   })
 
   it('clears the login lock file from the configured Web UI home', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'hermes-web-ui-cli-locks-'))
-    process.env.HERMES_WEB_UI_HOME = home
+    const home = mkdtempSync(join(tmpdir(), 'poiera-cli-locks-'))
+    process.env.POIERA_HOME = home
     const lockFile = join(home, '.login-lock.json')
     writeFileSync(lockFile, '{"passwordIpMap":{}}\n')
 
@@ -126,8 +126,8 @@ describe('CLI port detection', () => {
   })
 
   it('cleans a stale server PID file during stop', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'hermes-web-ui-cli-stale-pid-'))
-    process.env.HERMES_WEB_UI_HOME = home
+    const home = mkdtempSync(join(tmpdir(), 'poiera-cli-stale-pid-'))
+    process.env.POIERA_HOME = home
     const pidFile = join(home, 'server.pid')
     writeFileSync(pidFile, '999999999\n')
 
@@ -149,8 +149,8 @@ describe('CLI port detection', () => {
   })
 
   it('allows CLI stop and restart grace periods to be overridden separately', async () => {
-    process.env.HERMES_WEB_UI_RESTART_GRACE_MS = '2500'
-    process.env.HERMES_WEB_UI_STOP_GRACE_MS = '9000'
+    process.env.POIERA_RESTART_GRACE_MS = '2500'
+    process.env.POIERA_STOP_GRACE_MS = '9000'
     const { getDaemonStopGraceMs } = await loadCli()
 
     expect(getDaemonStopGraceMs({ restart: true })).toBe(2_500)
@@ -158,9 +158,9 @@ describe('CLI port detection', () => {
   })
 
   it('resets an existing admin user to the default password', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'hermes-web-ui-cli-default-login-'))
-    process.env.HERMES_WEB_UI_HOME = home
-    const dbPath = join(home, 'hermes-web-ui.db')
+    const home = mkdtempSync(join(tmpdir(), 'poiera-cli-default-login-'))
+    process.env.POIERA_HOME = home
+    const dbPath = join(home, 'poiera.db')
 
     try {
       const { resetDefaultLogin } = await loadCli()

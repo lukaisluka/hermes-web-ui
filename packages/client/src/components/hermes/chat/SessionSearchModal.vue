@@ -148,8 +148,8 @@ async function openItem(item: SearchItem) {
     })
   }
   await chatStore.switchSession(item.id, messageId)
-  if (router.currentRoute.value.name !== 'hermes.chat') {
-    await router.push({ name: 'hermes.chat' })
+  if (router.currentRoute.value.name !== 'poiera.chat') {
+    await router.push({ name: 'poiera.chat' })
   }
 }
 

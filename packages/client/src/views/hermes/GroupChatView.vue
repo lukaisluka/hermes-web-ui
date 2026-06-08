@@ -18,7 +18,7 @@ async function syncRouteRoom() {
     if (!roomId) return
 
     if (!store.rooms.some(room => room.id === roomId)) {
-        await router.replace({ name: 'hermes.groupChat' })
+        await router.replace({ name: 'poiera.groupChat' })
         return
     }
 

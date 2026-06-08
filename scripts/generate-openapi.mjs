@@ -19,9 +19,9 @@ const controllersDir = join(rootDir, 'packages/server/src/controllers')
 const openapi = {
   openapi: '3.0.3',
   info: {
-    title: 'Hermes Web UI API',
-    description: 'BFF server API for Hermes Web UI — chat sessions, scheduled jobs, platform channels, model management, skills, memory, logs, file browser, group chat, and terminal.',
-    version: '0.5.9',
+    title: 'Poiera API',
+    description: 'BFF server API for Poiera — chat sessions, scheduled jobs, model management, skills, memory, logs, file browser, group chat, and terminal.',
+    version: '0.1.0',
   },
   servers: [
     { url: 'http://localhost:8648', description: 'Local development' },

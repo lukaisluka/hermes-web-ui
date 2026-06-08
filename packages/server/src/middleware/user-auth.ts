@@ -26,7 +26,7 @@ interface JwtPayload {
   username: string
   role: UserRole
   type: 'access'
-  aud: 'hermes-web-ui'
+  aud: 'poiera'
   iat: number
   exp: number
 }
@@ -39,7 +39,7 @@ declare module 'koa' {
   }
 }
 
-const JWT_AUDIENCE = 'hermes-web-ui'
+const JWT_AUDIENCE = 'poiera'
 const DEFAULT_EXPIRES_SECONDS = 60 * 60 * 24 * 30
 
 function isUserRole(value: unknown): value is UserRole {

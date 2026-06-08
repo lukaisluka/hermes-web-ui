@@ -51,17 +51,17 @@ let cachedLatestVersion = ''
  * Useful for managed deployments where the operator controls upgrades and the
  * periodic outbound HTTP request to the npm registry is unnecessary.
  *
- * Set HERMES_WEB_UI_DISABLE_UPDATE_CHECK=true (or 1, on, yes) to disable.
+ * Set POIERA_DISABLE_UPDATE_CHECK=true (or 1, on, yes) to disable.
  */
 function isUpdateCheckDisabled(): boolean {
-  const raw = (process.env.HERMES_WEB_UI_DISABLE_UPDATE_CHECK || '').trim().toLowerCase()
+  const raw = (process.env.POIERA_DISABLE_UPDATE_CHECK || '').trim().toLowerCase()
   return raw === 'true' || raw === '1' || raw === 'on' || raw === 'yes'
 }
 
 export async function checkLatestVersion(): Promise<void> {
   if (isUpdateCheckDisabled()) return
   try {
-    const packageName = PACKAGE_INFO?.name || 'hermes-web-ui'
+    const packageName = PACKAGE_INFO?.name || 'poiera'
     const registryName = encodeURIComponent(packageName)
     const res = await fetch(`https://registry.npmjs.org/${registryName}/latest`, { signal: AbortSignal.timeout(10000) })
     if (res.ok) {

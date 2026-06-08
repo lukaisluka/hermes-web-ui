@@ -176,7 +176,7 @@ describe('skills controller', () => {
   })
 
   it('lists configured external skill directories with external source while keeping local skills first', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'hermes-web-ui-external-skills-'))
+    const root = await mkdtemp(join(tmpdir(), 'poiera-external-skills-'))
     const profileDir = join(root, 'profile')
     const localSkillDir = join(profileDir, 'skills', 'tools', 'dupe-skill')
     const externalDir = join(root, 'external-skills')
@@ -212,7 +212,7 @@ describe('skills controller', () => {
   })
 
   it('returns enabled skill names and descriptions only to regular users', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'hermes-web-ui-readonly-skills-'))
+    const root = await mkdtemp(join(tmpdir(), 'poiera-readonly-skills-'))
     const profileDir = join(root, 'profile')
     const enabledSkillDir = join(profileDir, 'skills', 'tools', 'enabled-skill')
     const disabledSkillDir = join(profileDir, 'skills', 'tools', 'disabled-skill')
@@ -283,7 +283,7 @@ describe('skills controller', () => {
   })
 
   it('imports skills into the request-scoped profile directory', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'hermes-web-ui-import-profile-'))
+    const root = await mkdtemp(join(tmpdir(), 'poiera-import-profile-'))
     const defaultProfileDir = join(root, 'default')
     const researchProfileDir = join(root, 'research')
     mockGetProfileDir.mockImplementation((profile: string) => profile === 'research' ? researchProfileDir : defaultProfileDir)
@@ -312,7 +312,7 @@ describe('skills controller', () => {
   })
 
   it('deletes local skills only from the request-scoped profile directory', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'hermes-web-ui-delete-profile-'))
+    const root = await mkdtemp(join(tmpdir(), 'poiera-delete-profile-'))
     const defaultProfileDir = join(root, 'default')
     const researchProfileDir = join(root, 'research')
     const defaultSkillDir = join(defaultProfileDir, 'skills', 'tools', 'dupe-skill')

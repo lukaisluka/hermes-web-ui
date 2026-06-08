@@ -150,7 +150,7 @@ const architecture = await readText('ARCHITECTURE.md')
 for (const phrase of [
   'packages/client/src',
   'packages/server/src',
-  'HERMES_WEB_UI_HOME',
+  'POIERA_HOME',
 ]) {
   if (!architecture.includes(phrase)) {
     fail(`ARCHITECTURE.md should document: ${phrase}`)

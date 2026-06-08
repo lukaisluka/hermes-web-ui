@@ -1,7 +1,7 @@
 export default {
   // Login
   login: {
-    title: 'Hermes Web UI',
+    title: 'Poiera',
     description: 'Geben Sie Benutzername und Passwort ein, um fortzufahren.',
     placeholder: 'Zugangs-Token',
     submit: 'Anmelden',
@@ -1258,7 +1258,7 @@ jobTriggered: 'Job ausgelost',
     new_0_6_8_4: 'Website und Release-Verteilung wurden mit Download-Mirrors, sequenziertem Website-Deploy nach Desktop-Releases und Desktop-Smoke-Check-Cleanup verbessert',
     new_0_6_8_5: 'Die Runtime-Nutzung wurde verbessert mit Provider-Kontextlaengen, erhaltenen ungesendeten Chat-Entwuerfen, Mobile-Layout-Overflow-Fixes, SSH File Provider Custom Ports und nicht-blockierenden Preview-Aktionen',
     new_0_6_7_1: 'Die Desktop-App nutzt jetzt standardmäßig Port 8748, unterstützt Zugriff im lokalen Netzwerk und kann direkt im lokalen Browser geöffnet werden',
-    new_0_6_7_9: 'Desktop-Download-Links sind jetzt auf der offiziellen Website https://github.com/lukaisluka/hermes-web-ui verfügbar, aktuelle Installer bleiben außerdem über GitHub Releases verfügbar',
+    new_0_6_7_9: 'Desktop-Download-Links sind jetzt auf der offiziellen Website https://github.com/lukaisluka/poiera verfügbar, aktuelle Installer bleiben außerdem über GitHub Releases verfügbar',
     new_0_6_7_2: 'MCP-Tools sind vollständiger: Bridge Tool Discovery, MCP-Management-Lifecycle und Tool-Sichtbarkeit pro Modell im Manager wurden verbessert',
     new_0_6_7_3: 'Nachrichtenlisten zentrieren leere Zustände korrekt, reduzieren Scroll-Jitter, zeigen beim Laden von History keine Live-Chat-Nachrichten mehr, behalten Scrollpositionen pro Session und blenden beim Session-Wechsel 1,5 Sekunden ein',
     new_0_6_7_4: 'Bridge und Runtime sind stabiler durch erhaltene Text/tool-call-Reihenfolge, korrektes Profile runtime status loading, bessere Node/npm-Erkennung und übersprungene Produktionsdatenverzeichnis-Erstellung',

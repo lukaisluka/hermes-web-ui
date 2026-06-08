@@ -7,8 +7,8 @@ untouched.
 
 ```bash
 git fetch origin --prune
-git worktree add -b codex/<short-topic> ../worktrees/hermes-web-ui-<short-topic> origin/main
-cd ../worktrees/hermes-web-ui-<short-topic>
+git worktree add -b codex/<short-topic> ../worktrees/poiera-<short-topic> origin/main
+cd ../worktrees/poiera-<short-topic>
 ```
 
 If the repository uses a fork remote, push to the remote requested by the task.
@@ -27,13 +27,13 @@ Use per-worktree state and ports to avoid colliding with a running local app:
 
 ```bash
 export PORT=18648
-export HERMES_WEB_UI_HOME="$PWD/.tmp/hermes-web-ui"
-export HERMES_WEBUI_STATE_DIR="$HERMES_WEB_UI_HOME"
+export POIERA_HOME="$PWD/.tmp/poiera"
+export POIERA_STATE_DIR="$POIERA_HOME"
 export UPLOAD_DIR="$PWD/.tmp/uploads"
 npm run dev
 ```
 
-Do not point `HERMES_WEB_UI_HOME` at a user's real `~/.hermes-web-ui` when a task
+Do not point `POIERA_HOME` at a user's real `~/.poiera` when a task
 only needs local verification.
 
 ## Browser Checks
@@ -52,7 +52,7 @@ requirements only when the behavior cannot be represented with mocks.
 After a PR is pushed and no more local work is needed:
 
 ```bash
-git worktree remove ../worktrees/hermes-web-ui-<short-topic>
+git worktree remove ../worktrees/poiera-<short-topic>
 ```
 
 Only remove the worktree you created.

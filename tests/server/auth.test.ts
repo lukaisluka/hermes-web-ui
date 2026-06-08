@@ -21,8 +21,8 @@ async function loadAuth(overrides: Partial<FsMocks> & { home?: string } = {}) {
   return {
     ...mod,
     mocks: { readFile, writeFile, mkdir },
-    appHome: join(home, '.hermes-web-ui'),
-    tokenFile: join(home, '.hermes-web-ui', '.token'),
+    appHome: join(home, '.poiera'),
+    tokenFile: join(home, '.poiera', '.token'),
   }
 }
 

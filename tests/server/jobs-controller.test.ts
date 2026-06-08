@@ -76,7 +76,7 @@ describe('Hermes jobs controller', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    tempDir = mkdtempSync(join(tmpdir(), 'hermes-web-ui-jobs-test-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'poiera-jobs-test-'))
     testState.profileDir = tempDir
     testState.profileDirs = {}
     testState.listUserProfiles.mockReturnValue([])

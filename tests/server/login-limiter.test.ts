@@ -9,7 +9,7 @@ async function loadLimiter() {
   }))
   vi.doMock('fs', () => ({ writeFileSync: vi.fn() }))
   vi.doMock('../../packages/server/src/config', () => ({
-    config: { appHome: '/tmp/hermes-web-ui-test' },
+    config: { appHome: '/tmp/poiera-test' },
   }))
   return import('../../packages/server/src/services/login-limiter')
 }

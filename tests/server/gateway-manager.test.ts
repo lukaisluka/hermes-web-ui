@@ -8,7 +8,7 @@ const originalEnv = { ...process.env }
 const tempHomes: string[] = []
 
 function createHermesHome(): string {
-  const home = mkdtempSync(join(tmpdir(), 'hermes-web-ui-gateway-'))
+  const home = mkdtempSync(join(tmpdir(), 'poiera-gateway-'))
   tempHomes.push(home)
   return home
 }

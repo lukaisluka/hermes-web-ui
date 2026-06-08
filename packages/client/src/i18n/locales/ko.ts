@@ -1,7 +1,7 @@
 export default {
   // 로그인
   login: {
-    title: 'Hermes Web UI',
+    title: 'Poiera',
     description: '계속하려면 사용자 이름과 비밀번호를 입력하세요.',
     placeholder: '액세스 토큰',
     submit: '로그인',
@@ -1257,7 +1257,7 @@ export default {
     new_0_6_8_4: '공식 사이트와 release 배포는 download mirrors, Desktop release 이후 website deploy, desktop smoke check 정리로 개선되었습니다',
     new_0_6_8_5: 'Provider context length 우선 사용, 미전송 chat draft 보존, mobile layout overflow 수정, SSH File Provider custom port, nonblocking preview actions 로 runtime 경험을 개선했습니다',
     new_0_6_7_1: 'Desktop 앱은 기본적으로 8748 포트를 사용하며 LAN 접근과 로컬 브라우저 직접 열기를 지원합니다',
-    new_0_6_7_9: 'Desktop 다운로드 링크가 공식 웹사이트 https://github.com/lukaisluka/hermes-web-ui 에 추가되었으며 최신 설치 파일은 GitHub Releases 에서도 계속 받을 수 있습니다',
+    new_0_6_7_9: 'Desktop 다운로드 링크가 공식 웹사이트 https://github.com/lukaisluka/poiera 에 추가되었으며 최신 설치 파일은 GitHub Releases 에서도 계속 받을 수 있습니다',
     new_0_6_7_2: 'MCP 도구는 bridge tool discovery 수정, MCP 관리 라이프사이클 수정, 관리자 화면의 모델별 tool visibility 제어로 더 완성되었습니다',
     new_0_6_7_3: '메시지 목록은 빈 상태 중앙 정렬, 스크롤 튐, History 로딩 중 라이브 채팅 메시지 노출을 수정하고 세션별 스크롤 위치 보존과 1.5초 페이드인을 지원합니다',
     new_0_6_7_4: 'Bridge 와 runtime 은 text/tool-call 순서 보존, Profile runtime status loading 수정, Node/npm 감지 개선, 운영 데이터 디렉터리 생성 생략으로 더 안정적입니다',

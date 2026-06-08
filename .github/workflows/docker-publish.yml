@@ -41,6 +41,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/hermes-web-ui:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/hermes-web-ui:${{ github.sha }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/hermes-web-ui:${{ github.event.release.tag_name || github.ref_name }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/poiera:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/poiera:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/poiera:${{ github.event.release.tag_name || github.ref_name }}

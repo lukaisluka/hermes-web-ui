@@ -9,7 +9,7 @@ function envPositiveInt(name: string): number | undefined {
 }
 
 export function getShutdownForceExitMs(): number {
-  const override = envPositiveInt('HERMES_WEB_UI_SHUTDOWN_FORCE_EXIT_MS')
+  const override = envPositiveInt('POIERA_SHUTDOWN_FORCE_EXIT_MS')
   return override || DEFAULT_SHUTDOWN_FORCE_EXIT_MS
 }
 

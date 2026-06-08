@@ -63,7 +63,7 @@ const isMobile = ref(false);
 
 function sessionHref(sessionId: string) {
   return router.resolve({
-    name: "hermes.session",
+    name: "poiera.session",
     params: { sessionId },
   }).href;
 }
@@ -79,7 +79,7 @@ function handleOutlineNavigate(target: { messageId: string; anchorId: string }) 
 
 async function handleSessionClick(sessionId: string) {
   await router.push({
-    name: "hermes.session",
+    name: "poiera.session",
     params: { sessionId },
   });
   if (mobileQuery?.matches) showSessions.value = false;
@@ -282,7 +282,7 @@ async function confirmNewChat() {
     model: newChatModel.value,
   });
   await router.push({
-    name: "hermes.session",
+    name: "poiera.session",
     params: { sessionId: session.id },
   });
   showNewChatModal.value = false;
@@ -298,7 +298,7 @@ function sessionProfile(sessionId: string): string | null {
 
 function buildSessionUrl(sessionId: string, profile?: string | null): string {
   const href = router.resolve({
-    name: "hermes.session",
+    name: "poiera.session",
     params: { sessionId },
     query: profile ? { profile } : undefined,
   }).href;

@@ -25,7 +25,7 @@ vi.mock('@/stores/hermes/chat', () => ({
   useChatStore: () => chatStoreMock,
 }))
 
-const routerCurrentRoute = { value: { name: 'hermes.logs' } }
+const routerCurrentRoute = { value: { name: 'poiera.logs' } }
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({
@@ -130,7 +130,7 @@ describe('session search modal', () => {
         rank: 0.1,
       },
     ])
-    routerCurrentRoute.value = { name: 'hermes.logs' }
+    routerCurrentRoute.value = { name: 'poiera.logs' }
   })
 
   afterEach(() => {
@@ -181,7 +181,7 @@ describe('session search modal', () => {
 
     expect(chatStoreMock.loadSessions).toHaveBeenCalled()
     expect(chatStoreMock.switchSession).toHaveBeenCalledWith('match-1', '17')
-    expect(apiMocks.routerPushMock).toHaveBeenCalledWith({ name: 'hermes.chat' })
+    expect(apiMocks.routerPushMock).toHaveBeenCalledWith({ name: 'poiera.chat' })
   })
 })
 

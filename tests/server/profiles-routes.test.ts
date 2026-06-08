@@ -63,7 +63,7 @@ import * as hermesCli from '../../packages/server/src/services/hermes/hermes-cli
 
 describe('Profile Routes', () => {
   const originalHermesHome = process.env.HERMES_HOME
-  const originalWebUiHome = process.env.HERMES_WEB_UI_HOME
+  const originalWebUiHome = process.env.POIERA_HOME
   const tempHomes: string[] = []
 
   beforeEach(() => {
@@ -76,8 +76,8 @@ describe('Profile Routes', () => {
   afterEach(async () => {
     if (originalHermesHome === undefined) delete process.env.HERMES_HOME
     else process.env.HERMES_HOME = originalHermesHome
-    if (originalWebUiHome === undefined) delete process.env.HERMES_WEB_UI_HOME
-    else process.env.HERMES_WEB_UI_HOME = originalWebUiHome
+    if (originalWebUiHome === undefined) delete process.env.POIERA_HOME
+    else process.env.POIERA_HOME = originalWebUiHome
     await Promise.all(tempHomes.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
   })
 
@@ -202,9 +202,9 @@ describe('Profile Routes', () => {
 
   describe('profile avatars', () => {
     it('stores generated avatar metadata under the Web UI home', async () => {
-      const webUiHome = await mkdtemp(join(tmpdir(), 'hermes-web-ui-avatar-'))
+      const webUiHome = await mkdtemp(join(tmpdir(), 'poiera-avatar-'))
       tempHomes.push(webUiHome)
-      process.env.HERMES_WEB_UI_HOME = webUiHome
+      process.env.POIERA_HOME = webUiHome
       const { updateAvatar } = await import('../../packages/server/src/controllers/hermes/profiles')
       const ctx: any = {
         params: { name: 'work' },
@@ -225,9 +225,9 @@ describe('Profile Routes', () => {
     })
 
     it('stores uploaded image avatars and returns a data URL', async () => {
-      const webUiHome = await mkdtemp(join(tmpdir(), 'hermes-web-ui-avatar-'))
+      const webUiHome = await mkdtemp(join(tmpdir(), 'poiera-avatar-'))
       tempHomes.push(webUiHome)
-      process.env.HERMES_WEB_UI_HOME = webUiHome
+      process.env.POIERA_HOME = webUiHome
       const dataUrl = `data:image/png;base64,${Buffer.from('avatar-png').toString('base64')}`
       const { updateAvatar } = await import('../../packages/server/src/controllers/hermes/profiles')
       const ctx: any = {
@@ -248,9 +248,9 @@ describe('Profile Routes', () => {
     })
 
     it('deletes profile avatar metadata', async () => {
-      const webUiHome = await mkdtemp(join(tmpdir(), 'hermes-web-ui-avatar-'))
+      const webUiHome = await mkdtemp(join(tmpdir(), 'poiera-avatar-'))
       tempHomes.push(webUiHome)
-      process.env.HERMES_WEB_UI_HOME = webUiHome
+      process.env.POIERA_HOME = webUiHome
       const metadataDir = join(webUiHome, 'profile-metadata', Buffer.from('work', 'utf-8').toString('base64url'))
       await mkdir(metadataDir, { recursive: true })
       await writeFile(join(metadataDir, 'avatar.json'), '{"type":"generated"}\n', 'utf-8')

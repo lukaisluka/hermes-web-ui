@@ -12,8 +12,8 @@ const DB_DIR = isTest
   : isDev
   ? resolve(process.cwd(), 'packages/server/data')
   : config.appHome
-const DB_PATH = resolve(DB_DIR, 'hermes-web-ui.db')
-const JSON_PATH = resolve(DB_DIR, 'hermes-web-ui.json')
+const DB_PATH = resolve(DB_DIR, 'poiera.db')
+const JSON_PATH = resolve(DB_DIR, 'poiera.json')
 
 // --- SQLite availability check ---
 

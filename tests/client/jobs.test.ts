@@ -6,7 +6,7 @@ vi.stubGlobal('fetch', mockFetch)
 
 vi.mock('@/router', () => ({
   default: {
-    currentRoute: { value: { name: 'hermes.jobs' } },
+    currentRoute: { value: { name: 'poiera.jobs' } },
     replace: vi.fn(),
   },
 }))

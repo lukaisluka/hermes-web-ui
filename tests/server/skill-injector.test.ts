@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const tempDirs: string[] = []
 const originalHermesHome = process.env.HERMES_HOME
-const originalSkillsDir = process.env.HERMES_WEB_UI_SKILLS_DIR
+const originalSkillsDir = process.env.POIERA_SKILLS_DIR
 
 async function tempDir(prefix: string): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), prefix))
@@ -17,8 +17,8 @@ afterEach(async () => {
   vi.resetModules()
   if (originalHermesHome === undefined) delete process.env.HERMES_HOME
   else process.env.HERMES_HOME = originalHermesHome
-  if (originalSkillsDir === undefined) delete process.env.HERMES_WEB_UI_SKILLS_DIR
-  else process.env.HERMES_WEB_UI_SKILLS_DIR = originalSkillsDir
+  if (originalSkillsDir === undefined) delete process.env.POIERA_SKILLS_DIR
+  else process.env.POIERA_SKILLS_DIR = originalSkillsDir
   await Promise.all(tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 
@@ -34,7 +34,7 @@ describe('HermesSkillInjector', () => {
 
     const { HermesSkillInjector } = await import('../../packages/server/src/services/hermes/skill-injector')
 
-    expect(HermesSkillInjector.resolveSourceDir({ HERMES_WEB_UI_SKILLS_DIR: override } as any, join(root, 'dist', 'server'))).toBe(override)
+    expect(HermesSkillInjector.resolveSourceDir({ POIERA_SKILLS_DIR: override } as any, join(root, 'dist', 'server'))).toBe(override)
     expect(HermesSkillInjector.resolveSourceDir({} as any, join(root, 'dist', 'server'))).toBe(distSkills)
     expect(HermesSkillInjector.resolveSourceDir({} as any, join(root, 'packages', 'server', 'src', 'services', 'hermes'))).toBe(devSkills)
   })

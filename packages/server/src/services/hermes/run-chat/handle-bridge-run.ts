@@ -328,7 +328,7 @@ export async function handleBridgeRun(
   const runContext = [
     `[Current Hermes profile: ${profile}]`,
     sessionRow?.workspace ? `[Current working directory: ${sessionRow.workspace}]` : '',
-    'When calling Hermes Web UI endpoints from tools or skills, include the current Hermes profile as the X-Hermes-Profile header if the endpoint supports profile-scoped behavior.',
+    'When calling Poiera endpoints from tools or skills, include the current Hermes profile as the X-Hermes-Profile header if the endpoint supports profile-scoped behavior.',
   ].filter(Boolean).join('\n')
   fullInstructions = `\n${runContext}\n${fullInstructions}`
 

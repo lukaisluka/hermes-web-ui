@@ -1,6 +1,6 @@
 # Architecture
 
-Hermes Web UI is a TypeScript monorepo that ships a browser dashboard and a Koa
+Poiera is a TypeScript monorepo that ships a browser dashboard and a Koa
 backend around Hermes Agent. Supported deployments are npm and Docker.
 
 ## Package Boundaries
@@ -26,8 +26,8 @@ should not duplicate server persistence rules.
 
 ## State And Data Ownership
 
-- Web UI state defaults to `~/.hermes-web-ui` through `config.appHome`.
-- `HERMES_WEB_UI_HOME` and `HERMES_WEBUI_STATE_DIR` override Web UI state location.
+- Web UI state defaults to `~/.poiera` through `config.appHome`.
+- `POIERA_HOME` and `POIERA_STATE_DIR` override Web UI state location.
 - Hermes Agent state lives under Hermes profile directories and must stay distinct from Web UI state.
 - Uploads default to `config.uploadDir`, which is derived from the Web UI home unless `UPLOAD_DIR` is set.
 - Runtime data directories must also live under the Web UI home, not beside built `dist` assets.

@@ -118,7 +118,7 @@ async function handleCreateRoom(name: string, inviteCode: string, userName: stri
         const failureMessage = formatAgentFailures(res.agentResults)
         if (failureMessage) message.warning(failureMessage)
         else message.success(t('groupChat.roomCreated'))
-        await router.push({ name: 'hermes.groupChatRoom', params: { roomId: res.room.id } })
+        await router.push({ name: 'poiera.groupChatRoom', params: { roomId: res.room.id } })
     } catch {
         message.error(t('common.saveFailed'))
     }
@@ -128,7 +128,7 @@ async function handleDeleteRoom(roomId: string) {
     try {
         await store.deleteRoom(roomId)
         if (store.currentRoomId === roomId) {
-            await router.replace({ name: 'hermes.groupChat' })
+            await router.replace({ name: 'poiera.groupChat' })
         }
         message.success(t('groupChat.roomDeleted'))
     } catch {
@@ -137,7 +137,7 @@ async function handleDeleteRoom(roomId: string) {
 }
 
 function buildRoomUrl(roomId: string) {
-    const href = router.resolve({ name: 'hermes.groupChatRoom', params: { roomId } }).href
+    const href = router.resolve({ name: 'poiera.groupChatRoom', params: { roomId } }).href
     return `${window.location.origin}${window.location.pathname}${href}`
 }
 
@@ -196,7 +196,7 @@ async function confirmCloneRoom() {
         cloneSourceRoomId.value = null
         cloneRoomName.value = ''
         cloneInviteCode.value = ''
-        await router.push({ name: 'hermes.groupChatRoom', params: { roomId: res.room.id } })
+        await router.push({ name: 'poiera.groupChatRoom', params: { roomId: res.room.id } })
         const failureMessage = formatAgentFailures(res.agentResults)
         if (failureMessage) message.warning(failureMessage)
         else message.success(t('groupChat.roomCloned'))
@@ -221,7 +221,7 @@ async function handleClearRoomContext() {
 
 async function handleSelectRoom(roomId: string) {
     try {
-        await router.push({ name: 'hermes.groupChatRoom', params: { roomId } })
+        await router.push({ name: 'poiera.groupChatRoom', params: { roomId } })
         if (window.innerWidth <= 768) showSidebar.value = false
     } catch {
         message.error(t('groupChat.joinFailed'))
