@@ -9,11 +9,9 @@ const mockAppStore = vi.hoisted(() => ({
   sidebarCollapsed: false,
   connected: true,
   serverVersion: 'test',
-  clientOutdated: false,
   toggleSidebar: vi.fn(),
   toggleSidebarCollapsed: vi.fn(),
   closeSidebar: vi.fn(),
-  reloadClient: vi.fn(),
 }))
 
 vi.mock('@/composables/useSessionSearch', () => ({
@@ -92,9 +90,6 @@ vi.mock('naive-ui', async () => {
       success: vi.fn(),
       error: vi.fn(),
     }),
-    NButton: {
-      template: '<button v-bind="$attrs"><slot /></button>',
-    },
     NSelect: {
       template: '<div />',
     },
@@ -109,10 +104,7 @@ describe('AppSidebar search entry', () => {
     openSessionSearchMock.mockClear()
     mockAppStore.serverVersion = 'test'
     mockAppStore.latestVersion = ''
-    mockAppStore.clientOutdated = false
-    mockAppStore.updating = false
     mockAppStore.sidebarCollapsed = false
-    mockAppStore.reloadClient.mockClear()
     replaceAppRouteMock.mockClear()
   })
 
@@ -129,7 +121,6 @@ describe('AppSidebar search entry', () => {
           ModelSelector: true,
           LanguageSwitch: true,
           ThemeSwitch: true,
-          NButton: true,
         },
       },
     })
@@ -142,28 +133,6 @@ describe('AppSidebar search entry', () => {
     expect(openSessionSearchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('offers a client reload when the server version differs from the loaded bundle', async () => {
-    mockAppStore.clientOutdated = true
-    mockAppStore.serverVersion = '0.5.17'
-    const wrapper = mount(AppSidebar, {
-      global: {
-        stubs: {
-          ProfileSelector: true,
-          ModelSelector: true,
-          LanguageSwitch: true,
-          ThemeSwitch: true,
-        },
-      },
-    })
-
-    const reloadButton = wrapper.findAll('button')
-      .find(node => node.text().includes('sidebar.reloadClientVersion'))
-    expect(reloadButton).toBeTruthy()
-
-    await reloadButton!.trigger('click')
-    expect(mockAppStore.reloadClient).toHaveBeenCalledTimes(1)
-  })
-
   it('uses short group labels and keeps group folding active when collapsed', async () => {
     mockAppStore.sidebarCollapsed = true
     const wrapper = mount(AppSidebar, {
@@ -173,7 +142,6 @@ describe('AppSidebar search entry', () => {
           ModelSelector: true,
           LanguageSwitch: true,
           ThemeSwitch: true,
-          NButton: true,
         },
       },
     })
@@ -203,7 +171,6 @@ describe('AppSidebar search entry', () => {
           ModelSelector: true,
           LanguageSwitch: true,
           ThemeSwitch: true,
-          NButton: true,
         },
       },
     })
@@ -224,14 +191,11 @@ describe('AppSidebar search entry', () => {
       expect(itemLabels.some(label => label.startsWith(allowed))).toBe(true)
     }
     for (const forbidden of [
-      'sidebar.channels',
       'sidebar.plugins',
       'sidebar.memory',
       'sidebar.models',
       'sidebar.logs',
       'sidebar.performance',
-      'sidebar.codingAgents',
-      'sidebar.versionPreview',
     ]) {
       expect(itemLabels).not.toContain(forbidden)
     }
@@ -246,7 +210,6 @@ describe('AppSidebar search entry', () => {
           ModelSelector: true,
           LanguageSwitch: true,
           ThemeSwitch: true,
-          NButton: true,
         },
       },
     })

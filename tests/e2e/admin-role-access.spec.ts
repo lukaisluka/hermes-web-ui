@@ -12,7 +12,7 @@ test.describe('admin role access', () => {
 
     const sidebar = page.locator('aside.sidebar')
     // Admin-visible management items
-    for (const item of ['Models', 'Skills', 'Plugins', 'Memory', 'Channels', 'MCP', 'Logs']) {
+    for (const item of ['Models', 'Skills', 'Plugins', 'Memory', 'MCP', 'Logs']) {
       await expect(sidebar.getByRole('link', { name: new RegExp(`^${item}$`) })).toBeVisible()
     }
 

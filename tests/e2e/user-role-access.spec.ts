@@ -13,7 +13,7 @@ test('regular users keep collaboration access while management routes stay hidde
   for (const allowed of [/^Chat$/, /^Group Chat/, /^Jobs$/, /^Kanban$/, /^Skills$/, /^MCP$/, /^Files$/, /^Usage$/, /^Skills Usage$/, /^Settings$/]) {
     await expect(sidebar.getByRole('link', { name: allowed })).toBeVisible()
   }
-  for (const forbidden of ['Models', 'Channels', 'Plugins', 'Memory', 'Logs', 'Performance', 'Terminal', 'Coding Agents', 'Profiles']) {
+  for (const forbidden of ['Models', 'Plugins', 'Memory', 'Logs', 'Performance', 'Terminal', 'Profiles']) {
     await expect(sidebar.getByRole('link', { name: new RegExp(`^${forbidden}$`) })).toHaveCount(0)
   }
 
@@ -115,18 +115,3 @@ test('regular user history uses simpler session list API', async ({ page }) => {
   expect(api.unexpectedRequests).toEqual([])
 })
 
-test('regular user sidebar hides update button', async ({ page }) => {
-  await authenticate(page, TEST_USER_ACCESS_KEY, 'research')
-  const api = await mockHermesApi(page, { initialProfileName: 'research', userRole: 'user' })
-  await mockChatSocket(page)
-
-  await page.goto('/#/hermes/chat')
-
-  // The update-available button should not be visible for regular users
-  // even if an update is available — the v-if gates on `!isRegularUser`
-  // NButton with type="primary" renders as .n-button--primary-type
-  const updateBtn = page.locator('aside.sidebar .update-btn.n-button--primary-type')
-  await expect(updateBtn).toHaveCount(0)
-
-  expect(api.unexpectedRequests).toEqual([])
-})

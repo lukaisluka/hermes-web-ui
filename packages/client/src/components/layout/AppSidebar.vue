@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { NButton, NModal } from "naive-ui";
+import { NModal } from "naive-ui";
 import { useAppStore } from "@/stores/hermes/app";
 import ModelSelector from "./ModelSelector.vue";
 import ProfileSelector from "./ProfileSelector.vue";
@@ -49,10 +49,6 @@ function isGroupCollapsed(key: string) {
   return !!collapsedGroups[key];
 }
 
-
-function handleReloadClient() {
-  appStore.reloadClient();
-}
 
 function handleLogout() {
   localStorage.clear();
@@ -326,9 +322,6 @@ function openChangelog() {
         <span class="version-text" @click="openChangelog">Studio v{{ appStore.serverVersion || "0.1.0" }}</span>
         <ThemeSwitch />
       </div>
-      <NButton v-if="appStore.clientOutdated" type="warning" size="tiny" block class="update-btn" @click="handleReloadClient">
-        {{ t('sidebar.reloadClientVersion', { version: appStore.serverVersion }) }}
-      </NButton>
     </div>
 
     <!-- Changelog modal -->
@@ -598,11 +591,6 @@ function openChangelog() {
   &:hover {
     color: $text-primary;
   }
-}
-
-.update-btn {
-  margin: 4px 0 0;
-  border-radius: 4px;
 }
 
 .version-text {

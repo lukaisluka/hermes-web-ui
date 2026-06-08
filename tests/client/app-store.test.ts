@@ -160,37 +160,6 @@ describe('App Store', () => {
     expect(mockSystemApi.updateDefaultModel).not.toHaveBeenCalled()
   })
 
-  it('marks the client stale when the served Web UI version changes', async () => {
-    mockSystemApi.checkHealth.mockResolvedValue({
-      status: 'ok',
-      webui_version: '0.5.17',
-      webui_latest: '0.5.17',
-      webui_update_available: false,
-    })
-    const store = useAppStore()
-
-    await store.checkConnection()
-
-    expect(store.connected).toBe(true)
-    expect(store.serverVersion).toBe('0.5.17')
-    expect(store.clientOutdated).toBe(true)
-  })
-
-  it('does not mark the client stale when the served Web UI version matches this bundle', async () => {
-    mockSystemApi.checkHealth.mockResolvedValue({
-      status: 'ok',
-      webui_version: 'test',
-      webui_latest: 'test',
-      webui_update_available: false,
-    })
-    const store = useAppStore()
-
-    await store.checkConnection()
-
-    expect(store.serverVersion).toBe('test')
-    expect(store.clientOutdated).toBe(false)
-  })
-
   it('loads model aliases and resolves display names without changing canonical IDs', async () => {
     mockSystemApi.fetchAvailableModels.mockResolvedValue({
       default: 'deepseek-v4-flash',

@@ -29,7 +29,6 @@ export const useAppStore = defineStore('app', () => {
 
   const connected = ref(false)
   const serverVersion = ref(WEB_UI_VERSION)
-  const clientOutdated = ref(false)
   const modelGroups = ref<AvailableModelGroup[]>([])
   const profileModelGroups = ref<ProfileAvailableModels[]>([])
   const selectedModel = ref('')
@@ -52,11 +51,9 @@ export const useAppStore = defineStore('app', () => {
       const res = await checkHealth()
       connected.value = res.status === 'ok'
       if (res.webui_version) serverVersion.value = res.webui_version
-      clientOutdated.value = !!res.webui_version && res.webui_version !== WEB_UI_VERSION
       if (res.node_version) nodeVersion.value = res.node_version
     } catch {
       connected.value = false
-      clientOutdated.value = false
     }
   }
 
@@ -275,12 +272,6 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  function reloadClient() {
-    const url = new URL(window.location.href)
-    url.searchParams.set('__hwui_reload', Date.now().toString())
-    window.location.replace(url.toString())
-  }
-
   function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
   }
@@ -307,8 +298,6 @@ export const useAppStore = defineStore('app', () => {
     connected,
     serverVersion,
     nodeVersion,
-    clientOutdated,
-    reloadClient,
     modelGroups,
     profileModelGroups,
     customModels,
