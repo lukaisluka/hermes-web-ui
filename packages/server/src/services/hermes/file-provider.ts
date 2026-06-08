@@ -20,7 +20,7 @@ const BACKEND_TIMEOUT = 30_000
 export const MAX_EDIT_SIZE = parseInt(process.env.MAX_EDIT_SIZE || '', 10) || 10 * 1024 * 1024
 
 // Sensitive files that should not be written/deleted/renamed
-const SENSITIVE_FILES = new Set(['.env', 'auth.json'])
+const SENSITIVE_FILES = new Set(['.env', 'auth.json', '.token'])
 
 export interface FileEntry {
   name: string
