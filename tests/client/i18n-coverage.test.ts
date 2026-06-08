@@ -98,8 +98,18 @@ function labelLength(value: unknown): number {
 
 describe('i18n locale coverage', () => {
   const ALLOWED_MISSING_KEYS = new Set([
-    'changelog.new_0_5_4_7',
-    'chat.sessionNotFound',
+    // Removed features — keys no longer defined but may be cached in dist/
+    'sidebar.channels',
+    'sidebar.codingAgents',
+    'sidebar.versionPreview',
+    'sidebar.updateTip',
+    'sidebar.updateVersion',
+    'sidebar.reloadClientVersion',
+    'sidebar.updating',
+    'sidebar.updateSuccess',
+    'sidebar.updateFailed',
+    'codingAgents.nodeEnvironmentMissing',
+    'githubPreview.nodeEnvironmentMissing'
   ])
 
   beforeAll(() => {
