@@ -138,6 +138,71 @@ export const USER_PROFILES_INDEXES = {
 }
 
 // ============================================================================
+// Profile-scoped resource ownership
+// ============================================================================
+
+export const JOB_OWNERS_TABLE = 'job_owners'
+
+export const JOB_OWNERS_SCHEMA: Record<string, string> = {
+  profile: "TEXT NOT NULL DEFAULT 'default'",
+  job_id: 'TEXT NOT NULL',
+  owner_user_id: 'INTEGER NOT NULL',
+  created_at: 'INTEGER NOT NULL',
+  updated_at: 'INTEGER NOT NULL',
+}
+
+export const KANBAN_BOARD_SCOPES_TABLE = 'kanban_board_scopes'
+
+export const KANBAN_BOARD_SCOPES_SCHEMA: Record<string, string> = {
+  board_slug: 'TEXT PRIMARY KEY',
+  profile: "TEXT NOT NULL DEFAULT 'default'",
+  creator_user_id: 'INTEGER NOT NULL',
+  created_at: 'INTEGER NOT NULL',
+  updated_at: 'INTEGER NOT NULL',
+}
+
+export const KANBAN_TASK_OWNERS_TABLE = 'kanban_task_owners'
+
+export const KANBAN_TASK_OWNERS_SCHEMA: Record<string, string> = {
+  board_slug: "TEXT NOT NULL DEFAULT 'default'",
+  task_id: 'TEXT NOT NULL',
+  creator_user_id: 'INTEGER NOT NULL',
+  dispatcher_user_id: 'INTEGER',
+  created_at: 'INTEGER NOT NULL',
+  updated_at: 'INTEGER NOT NULL',
+}
+
+// ============================================================================
+// Audit Events (services/audit.ts)
+// ============================================================================
+
+export const AUDIT_EVENTS_TABLE = 'audit_events'
+
+export const AUDIT_EVENTS_SCHEMA: Record<string, string> = {
+  id: 'INTEGER PRIMARY KEY AUTOINCREMENT',
+  timestamp: 'INTEGER NOT NULL',
+  action: 'TEXT NOT NULL',           // e.g. 'user.create', 'profile.delete', 'mcp.update'
+  actor_id: 'INTEGER NOT NULL',      // user.id of the actor
+  actor_username: 'TEXT NOT NULL',   // username at time of action (denormalized for query convenience)
+  actor_role: 'TEXT NOT NULL',       // role at time of action
+  profile: "TEXT NOT NULL DEFAULT ''", // profile scope, empty for global actions
+  target_type: "TEXT NOT NULL DEFAULT ''", // e.g. 'user', 'profile', 'skill', 'mcp_server', 'group_chat_room', 'job', 'kanban_board'
+  target_id: "TEXT NOT NULL DEFAULT ''",   // identifier of the target resource
+  description: "TEXT NOT NULL DEFAULT ''", // human-readable summary (no secrets/content)
+  meta: 'TEXT',                      // JSON blob for structured details (no secrets/content)
+  prev_hash: 'TEXT NOT NULL',        // SHA-256 hex of previous row's hash input
+  row_hash: 'TEXT NOT NULL',         // SHA-256 hex of this row's hash input
+}
+
+export const AUDIT_EVENTS_INDEXES = {
+  idx_audit_events_timestamp: 'CREATE INDEX IF NOT EXISTS idx_audit_events_timestamp ON audit_events(timestamp)',
+  idx_audit_events_action: 'CREATE INDEX IF NOT EXISTS idx_audit_events_action ON audit_events(action)',
+  idx_audit_events_actor: 'CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events(actor_id)',
+  idx_audit_events_profile: 'CREATE INDEX IF NOT EXISTS idx_audit_events_profile ON audit_events(profile)',
+  idx_audit_events_target: 'CREATE INDEX IF NOT EXISTS idx_audit_events_target ON audit_events(target_type, target_id)',
+}
+
+// ============================================================================
 // Group Chat (services/hermes/group-chat/index.ts)
 // ============================================================================
 
@@ -147,6 +212,7 @@ export const GC_ROOMS_SCHEMA: Record<string, string> = {
   id: 'TEXT PRIMARY KEY',
   name: 'TEXT NOT NULL',
   profile: 'TEXT',
+  ownerUserId: 'INTEGER',
   inviteCode: 'TEXT UNIQUE',
   triggerTokens: 'INTEGER NOT NULL DEFAULT 100000',
   maxHistoryTokens: 'INTEGER NOT NULL DEFAULT 32000',
@@ -370,6 +436,25 @@ export function initAllHermesTables(): void {
     syncTable(USER_PROFILES_TABLE, USER_PROFILES_SCHEMA, {
       primaryKey: 'user_id, profile_name',
       indexes: USER_PROFILES_INDEXES,
+    })
+    syncTable(JOB_OWNERS_TABLE, JOB_OWNERS_SCHEMA, {
+      primaryKey: 'profile, job_id',
+      indexes: {
+        idx_job_owners_owner: 'CREATE INDEX idx_job_owners_owner ON job_owners(owner_user_id)',
+      },
+    })
+    syncTable(KANBAN_BOARD_SCOPES_TABLE, KANBAN_BOARD_SCOPES_SCHEMA)
+    syncTable(KANBAN_TASK_OWNERS_TABLE, KANBAN_TASK_OWNERS_SCHEMA, {
+      primaryKey: 'board_slug, task_id',
+      indexes: {
+        idx_kanban_task_owners_creator: `CREATE INDEX IF NOT EXISTS idx_kanban_task_owners_creator ON ${KANBAN_TASK_OWNERS_TABLE}(creator_user_id)`,
+        idx_kanban_task_owners_dispatcher: `CREATE INDEX IF NOT EXISTS idx_kanban_task_owners_dispatcher ON ${KANBAN_TASK_OWNERS_TABLE}(dispatcher_user_id)`,
+      },
+    })
+
+    // Audit events
+    syncTable(AUDIT_EVENTS_TABLE, AUDIT_EVENTS_SCHEMA, {
+      indexes: AUDIT_EVENTS_INDEXES,
     })
 
     // Group chat - basic tables
