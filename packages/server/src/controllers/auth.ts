@@ -1,5 +1,7 @@
 import type { Context } from 'koa'
 import { checkPassword, recordPasswordFailure, recordPasswordSuccess, extractIp, getLockedIps, unlockIp, unlockAll } from '../services/login-limiter'
+import { AuditService } from '../services/audit'
+const audit = AuditService.getInstance()
 import {
   DEFAULT_PASSWORD,
   DEFAULT_USERNAME,
@@ -12,6 +14,7 @@ import {
   findUserSummaryById,
   findUserByUsername,
   getUserAvatar,
+  listUserProfiles,
   listUsers,
   setUserAvatar,
   updateUser,
@@ -23,6 +26,7 @@ import {
 } from '../db/hermes/users-store'
 import { issueUserJwt } from '../middleware/user-auth'
 import { listProfileNamesFromDisk } from '../services/hermes/hermes-profile'
+import { reconcileRevokedProfileOwnership } from '../services/hermes/resource-ownership-reconciliation'
 
 /**
  * GET /api/auth/status
@@ -57,9 +61,7 @@ export async function currentUser(ctx: Context) {
       updated_at: user.updated_at,
       last_login_at: user.last_login_at,
       avatar: user.avatar || '',
-      requiresCredentialChange: process.env.HERMES_DESKTOP === 'true'
-        ? false
-        : user.username === DEFAULT_USERNAME && verifyPassword(DEFAULT_PASSWORD, user.password_hash),
+      requiresCredentialChange: user.username === DEFAULT_USERNAME && verifyPassword(DEFAULT_PASSWORD, user.password_hash),
     },
   }
 }
@@ -238,6 +240,13 @@ export async function changePassword(ctx: Context) {
   }
 
   updateUserPassword(user.id, newPassword)
+  audit.recordEvent({
+    action: 'user.change_password',
+    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+    targetType: 'user',
+    targetId: String(ctx.state.user.id),
+    description: 'Changed own password',
+  })
   ctx.body = { success: true }
 }
 
@@ -273,7 +282,16 @@ export async function changeUsername(ctx: Context) {
     return
   }
 
+  const oldUsername = user.username
   updateUsername(user.id, newUsername)
+  audit.recordEvent({
+    action: 'user.change_username',
+    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+    targetType: 'user',
+    targetId: String(user.id),
+    description: `Changed username from "${oldUsername}" to "${newUsername}"`,
+    meta: { oldUsername, newUsername },
+  })
   ctx.body = { success: true }
 }
 
@@ -371,6 +389,14 @@ export async function createManagedUser(ctx: Context) {
     profiles: role === 'super_admin' ? [] : profiles,
     defaultProfile: body.defaultProfile,
   })
+  audit.recordEvent({
+    action: 'user.create',
+    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+    targetType: 'user',
+    targetId: String(user?.id),
+    description: `Created user "${username}" with role "${role}"`,
+    meta: { username, role, profiles: role === 'super_admin' ? [] : profiles },
+  })
   const users = listUsers()
   ctx.status = 201
   ctx.body = {
@@ -453,6 +479,7 @@ export async function updateManagedUser(ctx: Context) {
     }
   }
 
+  const previousProfiles = listUserProfiles(user.id).map(profile => profile.profile_name)
   updateUser({
     userId: user.id,
     username,
@@ -462,6 +489,23 @@ export async function updateManagedUser(ctx: Context) {
     profiles: nextRole === 'super_admin' ? [] : profiles,
     defaultProfile: body.defaultProfile,
   })
+  audit.recordEvent({
+    action: 'user.update',
+    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+    targetType: 'user',
+    targetId: String(user.id),
+    description: `Updated user "${user.username}" (role: ${nextRole}, status: ${nextStatus})`,
+    meta: { username: user.username, role: nextRole, status: nextStatus, profiles },
+  })
+  const nextUser = findUserById(user.id)
+  const nextProfiles = nextUser?.role === 'super_admin' && nextUser.status === 'active'
+    ? previousProfiles
+    : nextUser?.status === 'active'
+      ? listUserProfiles(user.id).map(profile => profile.profile_name)
+      : []
+  const nextProfileSet = new Set(nextProfiles)
+  const revokedProfiles = previousProfiles.filter(profile => !nextProfileSet.has(profile))
+  await reconcileRevokedProfileOwnership(user.id, revokedProfiles)
   ctx.body = { user: findUserSummaryById(user.id), users: listUsers() }
 }
 
@@ -489,7 +533,18 @@ export async function deleteManagedUser(ctx: Context) {
     return
   }
 
+  const previousProfiles = listUserProfiles(user.id).map(profile => profile.profile_name)
+  const deletedUser = user
   deleteUser(user.id)
+  audit.recordEvent({
+    action: 'user.delete',
+    actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+    targetType: 'user',
+    targetId: String(user.id),
+    description: `Deleted user "${deletedUser.username}"`,
+    meta: { username: deletedUser.username, role: deletedUser.role },
+  })
+  await reconcileRevokedProfileOwnership(user.id, previousProfiles)
   ctx.body = { success: true, users: listUsers() }
 }
 
@@ -515,6 +570,14 @@ export async function unlockIpHandler(ctx: Context) {
       ctx.body = { error: 'IP not locked' }
       return
     }
+    audit.recordEvent({
+      action: 'auth.unlock_ip',
+      actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+      targetType: 'locked_ip',
+      targetId: ip,
+      description: `Unlocked IP "${ip}"`,
+      meta: { ip },
+    })
     ctx.body = { success: true }
     return
   }
