@@ -4,9 +4,7 @@ import type { Context, Next } from 'koa'
 import { healthRoutes } from './health'
 import { webhookRoutes } from './webhook'
 import { uploadRoutes } from './upload'
-import { updateRoutes } from './update'
 import { authPublicRoutes, authProtectedRoutes } from './auth'
-import { codingAgentRoutes } from './coding-agents'
 import { claudeCodeProxyRoutes } from './claude-code-proxy'
 import { codexProxyRoutes } from './codex-proxy'
 
@@ -24,7 +22,6 @@ import { codexAuthRoutes } from './hermes/codex-auth'
 import { nousAuthRoutes } from './hermes/nous-auth'
 import { copilotAuthRoutes } from './hermes/copilot-auth'
 import { xaiAuthRoutes } from './hermes/xai-auth'
-import { weixinRoutes } from './hermes/weixin'
 import { fileRoutes } from './hermes/files'
 import { downloadRoutes } from './hermes/download'
 import { jobRoutes } from './hermes/jobs'
@@ -36,6 +33,7 @@ import { proxyRoutes, proxyMiddleware } from './hermes/proxy'
 import { groupChatRoutes, setGroupChatServer } from './hermes/group-chat'
 import { performanceMonitorRoutes } from './hermes/performance-monitor'
 import { mcpRoutes } from './hermes/mcp'
+import { auditRoutes } from './audit'
 
 /**
  * Register all routes on the Koa app.
@@ -57,8 +55,6 @@ export function registerRoutes(app: any, authMiddleware: Array<(ctx: Context, ne
   app.use(authProtectedRoutes.routes())
   app.use(ttsRoutes.routes())
   app.use(uploadRoutes.routes())
-  app.use(updateRoutes.routes())           // Must be before proxy (proxy catch-all matches everything)
-  app.use(codingAgentRoutes.routes())
   app.use(sessionRoutes.routes())
   app.use(profileRoutes.routes())
   app.use(skillRoutes.routes())
@@ -72,7 +68,6 @@ export function registerRoutes(app: any, authMiddleware: Array<(ctx: Context, ne
   app.use(nousAuthRoutes.routes())
   app.use(copilotAuthRoutes.routes())
   app.use(xaiAuthRoutes.routes())
-  app.use(weixinRoutes.routes())
   app.use(groupChatRoutes.routes())       // Must be before proxy
   app.use(fileRoutes.routes())              // Must be before proxy (proxy catch-all matches everything)
   app.use(downloadRoutes.routes())          // Must be before proxy
@@ -82,6 +77,7 @@ export function registerRoutes(app: any, authMiddleware: Array<(ctx: Context, ne
   app.use(mediaRoutes.routes())              // Must be before proxy
   app.use(performanceMonitorRoutes.routes())  // Must be before proxy
   app.use(mcpRoutes.routes())                   // MCP management
+  app.use(auditRoutes.routes())                  // Audit query
   app.use(proxyRoutes.routes())
 
   // Proxy catch-all middleware (must be last)
