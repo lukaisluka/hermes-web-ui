@@ -1187,6 +1187,8 @@ jobTriggered: 'Job acionado',
     noSessions: 'Nenhuma sessão de terminal',
     connectionFailed: 'Falha ao conectar ao terminal',
     connectionError: 'Erro de conexão',
+    disabledTitle: 'Terminal Disabled',
+    disabledMessage: 'The terminal feature is disabled by default. Enable it by setting POIERA_ENABLE_TERMINAL=1.',
     connectionClosed: 'Conexão fechada',
   },
 

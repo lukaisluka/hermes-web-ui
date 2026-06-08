@@ -1293,6 +1293,8 @@ export default {
     connectionFailed: '終端機服務連線失敗',
     connectionClosed: '終端機連線已關閉',
     connectionError: '終端機連線錯誤',
+    disabledTitle: 'Terminal Disabled',
+    disabledMessage: 'The terminal feature is disabled by default. Enable it by setting POIERA_ENABLE_TERMINAL=1.',
   },
 
   // 群聊

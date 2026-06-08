@@ -5,12 +5,16 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { getApiKey, getBaseUrlValue } from "@/api/client";
-import { NButton, NPopconfirm, NTooltip, NSelect, useMessage } from "naive-ui";
+import { NButton, NPopconfirm, NTooltip, NSelect, NAlert, useMessage } from "naive-ui";
 import { useI18n } from "vue-i18n";
+import { useAppStore } from "@/stores/hermes/app";
 import type { ITheme } from "@xterm/xterm";
 
 const { t } = useI18n();
 const message = useMessage();
+const appStore = useAppStore();
+
+const terminalEnabled = computed(() => appStore.terminalEnabled);
 
 // ─── Terminal themes ────────────────────────────────────────────
 
@@ -575,7 +579,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="terminal-panel">
+  <div v-if="!terminalEnabled" class="terminal-disabled">
+    <NAlert type="warning" :title="t('terminal.disabledTitle')">
+      {{ t('terminal.disabledMessage') }}
+    </NAlert>
+  </div>
+  <div v-else class="terminal-panel">
     <!-- Session backdrop (mobile) -->
     <div
       class="session-backdrop"
@@ -1098,5 +1107,13 @@ onUnmounted(() => {
 
 .xterm .scrollbar:hover .slider {
   background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.terminal-disabled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
 }
 </style>

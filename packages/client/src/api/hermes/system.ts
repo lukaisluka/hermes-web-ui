@@ -5,6 +5,7 @@ export interface HealthResponse {
   version?: string
   webui_version?: string
   node_version?: string
+  terminal_enabled?: boolean
 }
 
 // Config-based model types

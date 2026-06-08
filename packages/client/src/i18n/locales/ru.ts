@@ -1153,6 +1153,8 @@ export default {
     connectionFailed: 'Не удалось подключиться к службе терминала',
     connectionClosed: 'Соединение с терминалом закрыто',
     connectionError: 'Ошибка соединения с терминалом',
+    disabledTitle: 'Terminal Disabled',
+    disabledMessage: 'The terminal feature is disabled by default. Enable it by setting POIERA_ENABLE_TERMINAL=1.',
   },
 
 

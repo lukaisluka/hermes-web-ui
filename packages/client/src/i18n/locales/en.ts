@@ -1290,6 +1290,8 @@ export default {
     connectionFailed: 'Terminal service connection failed',
     connectionClosed: 'Terminal connection closed',
     connectionError: 'Terminal connection error',
+    disabledTitle: 'Terminal Disabled',
+    disabledMessage: 'The terminal feature is disabled by default for security. Enable it by setting the POIERA_ENABLE_TERMINAL=1 environment variable and restarting the server.',
   },
 
   // Group Chat

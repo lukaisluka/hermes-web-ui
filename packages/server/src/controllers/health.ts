@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 import * as hermesCli from '../services/hermes/hermes-cli'
+import { config } from '../config'
 
 declare const __APP_VERSION__: string
 
@@ -94,5 +95,6 @@ export async function healthCheck(ctx: any) {
       ? false
       : Boolean(LOCAL_VERSION && cachedLatestVersion && cachedLatestVersion !== LOCAL_VERSION),
     node_version: process.versions.node,
+    terminal_enabled: config.terminalEnabled,
   }
 }

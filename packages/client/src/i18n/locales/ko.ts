@@ -1186,6 +1186,8 @@ export default {
     noSessions: '터미널 세션이 없습니다',
     connectionFailed: '터미널에 연결하지 못했습니다',
     connectionError: '연결 오류',
+    disabledTitle: 'Terminal Disabled',
+    disabledMessage: 'The terminal feature is disabled by default. Enable it by setting POIERA_ENABLE_TERMINAL=1.',
     connectionClosed: '연결이 닫혔습니다',
   },
 

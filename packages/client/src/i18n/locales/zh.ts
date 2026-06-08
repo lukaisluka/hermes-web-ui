@@ -1292,6 +1292,8 @@ export default {
     connectionFailed: '终端服务连接失败',
     connectionClosed: '终端连接已关闭',
     connectionError: '终端连接错误',
+    disabledTitle: '终端已禁用',
+    disabledMessage: '终端功能默认禁用。请设置 POIERA_ENABLE_TERMINAL=1 环境变量并重启服务器来启用。',
   },
 
   // 群聊

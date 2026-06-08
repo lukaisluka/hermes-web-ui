@@ -6,6 +6,7 @@ import { homedir } from 'os'
 import { getActiveProfileDir } from '../../services/hermes/hermes-profile'
 import { getTerminalConfig, type TerminalConfig } from '../../services/hermes/file-provider'
 import { authenticateUserToken, isAuthEnabled, isRegularUser } from '../../middleware/user-auth'
+import { config } from '../../config'
 import { logger } from '../../services/logger'
 
 let pty: any = null
@@ -134,6 +135,11 @@ function createSession(shell: string): PtySession {
 // ─── WebSocket server setup ─────────────────────────────────────
 
 export function setupTerminalWebSocket(httpServers: HttpServer | HttpServer[]) {
+  if (!config.terminalEnabled) {
+    logger.info('Terminal disabled (POIERA_ENABLE_TERMINAL not set); skipping WebSocket setup')
+    return
+  }
+
   if (!pty) {
     logger.warn('node-pty not available, skipping terminal WebSocket setup')
     return

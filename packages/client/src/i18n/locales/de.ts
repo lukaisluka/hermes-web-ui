@@ -1188,6 +1188,8 @@ jobTriggered: 'Job ausgelost',
     connectionFailed: 'Terminaldienstverbindung fehlgeschlagen',
     connectionClosed: 'Terminalverbindung geschlossen',
     connectionError: 'Terminalverbindungsfehler',
+    disabledTitle: 'Terminal Disabled',
+    disabledMessage: 'The terminal feature is disabled by default. Enable it by setting POIERA_ENABLE_TERMINAL=1.',
   },
 
   // Usage

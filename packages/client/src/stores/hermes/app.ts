@@ -29,6 +29,7 @@ export const useAppStore = defineStore('app', () => {
 
   const connected = ref(false)
   const serverVersion = ref(WEB_UI_VERSION)
+  const terminalEnabled = ref(false)
   const modelGroups = ref<AvailableModelGroup[]>([])
   const profileModelGroups = ref<ProfileAvailableModels[]>([])
   const selectedModel = ref('')
@@ -52,6 +53,7 @@ export const useAppStore = defineStore('app', () => {
       connected.value = res.status === 'ok'
       if (res.webui_version) serverVersion.value = res.webui_version
       if (res.node_version) nodeVersion.value = res.node_version
+      if (res.terminal_enabled !== undefined) terminalEnabled.value = res.terminal_enabled
     } catch {
       connected.value = false
     }
@@ -298,6 +300,7 @@ export const useAppStore = defineStore('app', () => {
     connected,
     serverVersion,
     nodeVersion,
+    terminalEnabled,
     modelGroups,
     profileModelGroups,
     customModels,

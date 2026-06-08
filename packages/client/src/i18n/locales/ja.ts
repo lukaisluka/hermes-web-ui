@@ -1186,6 +1186,8 @@ export default {
     noSessions: 'ターミナルセッションがありません',
     connectionFailed: 'ターミナルに接続できませんでした',
     connectionError: '接続エラー',
+    disabledTitle: 'Terminal Disabled',
+    disabledMessage: 'The terminal feature is disabled by default. Enable it by setting POIERA_ENABLE_TERMINAL=1.',
     connectionClosed: '接続が閉じられました',
   },
 

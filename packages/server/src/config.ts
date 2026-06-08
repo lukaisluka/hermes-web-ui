@@ -46,6 +46,11 @@ export function shouldCreateWebUiDataDir(env: Record<string, string | undefined>
   return env.NODE_ENV !== 'production'
 }
 
+export function isTerminalEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  const raw = env.POIERA_ENABLE_TERMINAL?.trim().toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on'
+}
+
 const appHome = getWebUiHome()
 
 export const config = {
@@ -56,4 +61,5 @@ export const config = {
   uploadDir: process.env.UPLOAD_DIR || join(appHome, 'upload'),
   dataDir: resolve(__dirname, '..', 'data'),
   corsOrigins: process.env.CORS_ORIGINS || '*',
+  terminalEnabled: isTerminalEnabled(),
 }
