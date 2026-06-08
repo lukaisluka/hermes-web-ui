@@ -134,9 +134,9 @@ function computeRowHash(row: {
   return createHash('sha256').update(parts).digest('hex')
 }
 
-function buildWhereClause(options: AuditQueryOptions): { sql: string; params: unknown[] } {
+function buildWhereClause(options: AuditQueryOptions): { sql: string; params: (string | number)[] } {
   const conditions: string[] = []
-  const params: unknown[] = []
+  const params: (string | number)[] = []
 
   if (options.allowedProfiles && options.allowedProfiles.length > 0) {
     // Include events matching allowed profiles OR global (empty profile)
@@ -290,7 +290,7 @@ export class AuditService {
 
       const rows = db.prepare(
         `SELECT * FROM ${AUDIT_EVENTS_TABLE} ${whereSql} ORDER BY id ASC LIMIT ? OFFSET ?`
-      ).all(...params, limit, offset) as AuditEventRow[]
+      ).all(...params, limit, offset) as unknown as AuditEventRow[]
 
       return rows
     } catch {
@@ -329,7 +329,7 @@ export class AuditService {
       const rows = db.prepare(
         `SELECT id, timestamp, action, actor_id, actor_username, actor_role, profile, target_type, target_id, description, meta, prev_hash, row_hash
          FROM ${AUDIT_EVENTS_TABLE} ORDER BY id ASC`
-      ).all() as AuditEventRow[]
+      ).all() as unknown as AuditEventRow[]
 
       if (rows.length === 0) return { valid: true, brokenAt: null }
 
@@ -376,7 +376,7 @@ export class AuditService {
         `DELETE FROM ${AUDIT_EVENTS_TABLE} WHERE timestamp < ?`
       ).run(cutoff)
 
-      return result.changes
+      return Number(result.changes)
     } catch {
       return 0
     }
