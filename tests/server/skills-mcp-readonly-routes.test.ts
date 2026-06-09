@@ -25,6 +25,7 @@ vi.mock('../../packages/server/src/controllers/hermes/mcp', () => ({
   updateServer: vi.fn(),
   removeServer: vi.fn(),
   testServer: vi.fn(),
+  copyServer: vi.fn(),
   listTools: vi.fn(),
   reloadMcp: vi.fn(),
 }))

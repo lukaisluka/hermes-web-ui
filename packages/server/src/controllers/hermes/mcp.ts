@@ -51,6 +51,92 @@ export async function listServers(ctx: Context) {
   }
 }
 
+/** Keys whose values should be stripped when copying MCP server config between profiles. */
+const MCP_CREDENTIAL_KEYS = new Set([
+  'apiKey', 'api_key', 'apiSecret', 'api_secret',
+  'password', 'secret', 'token', 'credential',
+  'authorization', 'privateKey', 'private_key',
+  'clientId', 'client_id', 'clientSecret', 'client_secret',
+])
+
+/**
+ * Strip credentials from an MCP server config object.
+ * Recursively removes credential keys from nested objects (like env).
+ */
+function stripCredentials(config: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(config)) {
+    if (MCP_CREDENTIAL_KEYS.has(key)) {
+      result[key] = '[REDACTED]'
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = stripCredentials(value as Record<string, unknown>)
+    } else {
+      result[key] = value
+    }
+  }
+  return result
+}
+
+export async function copyServer(ctx: Context) {
+  try {
+    const sourceName = ctx.params.name as string
+    const { targetProfile } = (ctx.request.body || {}) as Record<string, unknown>
+
+    if (!sourceName || !isValidServerName(sourceName)) {
+      ctx.status = 400
+      ctx.body = { error: 'Valid source server name is required' }
+      return
+    }
+
+    if (typeof targetProfile !== 'string' || !targetProfile.trim()) {
+      ctx.status = 400
+      ctx.body = { error: 'targetProfile is required' }
+      return
+    }
+
+    // Get the source server's config from the current profile
+    const sourceProfile = getProfile(ctx)
+    const sourceList = await bridgeMcpAction('mcp_list', {}, sourceProfile)
+    const sourceServer = (sourceList?.servers as any[])?.find((s: any) => s?.name === sourceName)
+
+    if (!sourceServer?.raw_config) {
+      ctx.status = 404
+      ctx.body = { error: `MCP server "${sourceName}" not found in profile "${sourceProfile || 'default'}"` }
+      return
+    }
+
+    // Strip credentials and force disabled
+    const strippedConfig = stripCredentials(sourceServer.raw_config as Record<string, unknown>)
+    strippedConfig.enabled = false
+
+    // Add the server to the target profile
+    const result = await bridgeMcpAction('mcp_server_add', { name: sourceName, config: strippedConfig }, targetProfile.trim())
+
+    if (ctx.state?.user) {
+      audit.recordEvent({
+        action: 'mcp_server.copy',
+        actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
+        profile: targetProfile.trim(),
+        targetType: 'mcp_server',
+        targetId: sourceName,
+        description: `Copied MCP server "${sourceName}" from profile "${sourceProfile || 'default'}" to profile "${targetProfile.trim()}" (credentials stripped, disabled by default)`,
+        meta: { name: sourceName, sourceProfile, targetProfile: targetProfile.trim() },
+      })
+    }
+
+    ctx.body = {
+      ...result,
+      _copied: true,
+      _source_profile: sourceProfile || 'default',
+      _target_profile: targetProfile.trim(),
+      _credentials_stripped: true,
+    }
+  } catch (err: any) {
+    ctx.status = 503
+    ctx.body = { error: err.message || 'Failed to copy MCP server' }
+  }
+}
+
 export async function addServer(ctx: Context) {
   try {
     const { name, config } = (ctx.request.body || {}) as Record<string, unknown>
