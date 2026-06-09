@@ -8,6 +8,7 @@ import { ContextEngine } from '../context-engine/compressor'
 import { SessionDeleter } from '../session-deleter'
 import { countTokens, SUMMARY_PREFIX } from '../../../lib/context-compressor'
 import { AgentBridgeClient } from '../agent-bridge'
+import { AuditService } from '../../audit'
 import { authenticateUserToken, isAuthEnabled, isRegularUser, type AuthenticatedUser } from '../../../middleware/user-auth'
 import { findUserByUsername, getUserAvatar, userCanAccessProfile } from '../../../db/hermes/users-store'
 
@@ -1038,6 +1039,22 @@ export class GroupChatServer {
         })
 
         logger.debug(`[GroupChat] ${userName} (user=${userId}) joined room: ${roomId}`)
+
+        // Audit: member joined room
+        if (source !== 'agent' && authUserId) {
+            try {
+                const authedUser = this.socketAuthenticatedUserMap.get(socket.id)
+                const audit = AuditService.getInstance()
+                audit.recordEvent({
+                  action: 'group_chat.member_joined',
+                  actor: { id: authUserId, username: userName, role: (authedUser as any)?.role || 'user' },
+                  profile: roomId,
+                  targetType: 'group_chat_room',
+                  targetId: roomId,
+                  description: `${userName} joined room ${roomId}`,
+                })
+            } catch { /* best-effort */ }
+        }
     }
 
     private handleMessage(socket: Socket, data: Partial<ChatMessage> & { roomId?: string; content: string | Array<Record<string, unknown>>; id?: string; mentionDepth?: number }, ack?: (res: any) => void): void {
@@ -1366,6 +1383,8 @@ export class GroupChatServer {
     }
 
     private leaveAllRooms(socket: Socket, socketId: string): void {
+        const authUserId = this.socketAuthUserIdMap.get(socketId)
+        const authedUser = authUserId ? this.socketAuthenticatedUserMap.get(socketId) : null
         this.rooms.forEach((room, rid) => {
             if (room.hasOnlineMember(socketId)) {
                 const member = room.getOnlineMemberBySocketId(socketId)
@@ -1378,6 +1397,21 @@ export class GroupChatServer {
                         memberName: member?.name || `User-${socketId.slice(0, 6)}`,
                         members: room.getMembersList(),
                     })
+
+                    // Audit: member left room
+                    if (authUserId && member) {
+                        try {
+                            const audit = AuditService.getInstance()
+                            audit.recordEvent({
+                              action: 'group_chat.member_left',
+                              actor: { id: authUserId, username: member.name || `User-${socketId.slice(0, 6)}`, role: (authedUser as any)?.role || 'user' },
+                              profile: rid,
+                              targetType: 'group_chat_room',
+                              targetId: rid,
+                              description: `${member.name || `User-${socketId.slice(0, 6)}`} left room ${rid}`,
+                            })
+                        } catch { /* best-effort */ }
+                    }
                 }
             }
         })
