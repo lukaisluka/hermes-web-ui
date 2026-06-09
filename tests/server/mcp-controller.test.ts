@@ -194,47 +194,99 @@ describe('MCP Controller', () => {
 
     it('sends tools.include config for include mode', async () => {
       mcpUpdateMock.mockResolvedValue({ ok: true })
+      mcpListMock.mockResolvedValue({ ok: true, servers: [{ name: 'github', raw_config: { command: 'npx', args: ['-y', 'server'] } }], total_tools: 0 })
       const { updateServer } = await import('../../packages/server/src/controllers/hermes/mcp')
       const ctx = createCtx({
         params: { name: 'github' },
-        request: { body: { config: { command: 'npx', args: ['-y', 'server'], tools: { include: ['read_file', 'write_file'] } } } },
+        request: { body: { config: { command: 'npx', args: ['-y', 'other'], tools: { include: ['read_file', 'write_file'] } } } },
       })
       await updateServer(ctx)
+      // Connection param 'args' changed → auto-disable injects enabled: false
       expect(mcpUpdateMock).toHaveBeenCalledWith('github', {
         command: 'npx',
-        args: ['-y', 'server'],
+        args: ['-y', 'other'],
         tools: { include: ['read_file', 'write_file'] },
+        enabled: false,
       }, 'test-profile')
-      expect(ctx.body).toEqual({ ok: true })
+      expect(ctx.body._auto_disabled).toBe(true)
     })
 
     it('sends tools.exclude config for exclude mode', async () => {
       mcpUpdateMock.mockResolvedValue({ ok: true })
+      mcpListMock.mockResolvedValue({ ok: true, servers: [{ name: 'github', raw_config: { command: 'npx', args: ['-y', 'server'] } }], total_tools: 0 })
       const { updateServer } = await import('../../packages/server/src/controllers/hermes/mcp')
       const ctx = createCtx({
         params: { name: 'github' },
-        request: { body: { config: { command: 'npx', args: ['-y', 'server'], tools: { exclude: ['delete_file'] } } } },
+        request: { body: { config: { command: 'new-cmd', args: ['-y', 'server'], tools: { exclude: ['delete_file'] } } } },
       })
       await updateServer(ctx)
+      // Connection param 'command' changed → auto-disable injects enabled: false
       expect(mcpUpdateMock).toHaveBeenCalledWith('github', {
-        command: 'npx',
+        command: 'new-cmd',
         args: ['-y', 'server'],
         tools: { exclude: ['delete_file'] },
+        enabled: false,
       }, 'test-profile')
-      expect(ctx.body).toEqual({ ok: true })
+      expect(ctx.body._auto_disabled).toBe(true)
     })
 
     it('sends config without tools field for all mode', async () => {
       mcpUpdateMock.mockResolvedValue({ ok: true })
+      // No existing server config → no connection param change → no auto-disable
+      mcpListMock.mockResolvedValue({ ok: true, servers: [], total_tools: 0 })
       const { updateServer } = await import('../../packages/server/src/controllers/hermes/mcp')
       const ctx = createCtx({
         params: { name: 'github' },
         request: { body: { config: { command: 'npx', args: ['-y', 'server'] } } },
       })
       await updateServer(ctx)
+      // No existing config to compare → no auto-disable
       expect(mcpUpdateMock).toHaveBeenCalledWith('github', {
         command: 'npx',
         args: ['-y', 'server'],
+      }, 'test-profile')
+      expect(ctx.body).toEqual({ ok: true })
+    })
+
+    it('auto-disables server when connection params change', async () => {
+      mcpUpdateMock.mockResolvedValue({ ok: true })
+      mcpListMock.mockResolvedValue({
+        ok: true,
+        servers: [{ name: 'myserver', raw_config: { command: 'old-cmd', args: ['--old'], env: { KEY: 'old' } } }],
+        total_tools: 0,
+      })
+      const { updateServer } = await import('../../packages/server/src/controllers/hermes/mcp')
+      const ctx = createCtx({
+        params: { name: 'myserver' },
+        request: { body: { config: { command: 'new-cmd', args: ['--old'], env: { KEY: 'new' } } } },
+      })
+      await updateServer(ctx)
+      expect(mcpUpdateMock).toHaveBeenCalledWith('myserver', expect.objectContaining({
+        command: 'new-cmd',
+        enabled: false,
+      }), 'test-profile')
+      expect(ctx.body._auto_disabled).toBe(true)
+      expect(ctx.body._auto_disabled_reason).toContain('command')
+    })
+
+    it('does not auto-disable when only non-connection params change', async () => {
+      mcpUpdateMock.mockResolvedValue({ ok: true })
+      mcpListMock.mockResolvedValue({
+        ok: true,
+        servers: [{ name: 'myserver', raw_config: { command: 'npx', args: ['-y', 'server'], tools: { include: ['a'] } } }],
+        total_tools: 0,
+      })
+      const { updateServer } = await import('../../packages/server/src/controllers/hermes/mcp')
+      const ctx = createCtx({
+        params: { name: 'myserver' },
+        request: { body: { config: { command: 'npx', args: ['-y', 'server'], tools: { include: ['a', 'b'] } } } },
+      })
+      await updateServer(ctx)
+      // Only tools changed, not connection params → no auto-disable
+      expect(mcpUpdateMock).toHaveBeenCalledWith('myserver', {
+        command: 'npx',
+        args: ['-y', 'server'],
+        tools: { include: ['a', 'b'] },
       }, 'test-profile')
       expect(ctx.body).toEqual({ ok: true })
     })

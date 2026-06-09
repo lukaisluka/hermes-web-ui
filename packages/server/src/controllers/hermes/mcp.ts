@@ -82,6 +82,29 @@ export async function addServer(ctx: Context) {
   }
 }
 
+/** Connection-param keys that trigger auto-disable on change */
+const MCP_CONNECTION_PARAMS = new Set(['command', 'args', 'env', 'url', 'baseUrl', 'endpoint'])
+
+/**
+ * Check if config changes affect connection parameters.
+ * Returns the set of changed connection-param keys.
+ */
+function detectConnectionParamChanges(
+  oldConfig: Record<string, unknown> | undefined,
+  newConfig: Record<string, unknown>,
+): Set<string> {
+  if (!oldConfig) return new Set() // First-time config, no comparison needed
+  const changed = new Set<string>()
+  for (const key of MCP_CONNECTION_PARAMS) {
+    if (key in newConfig) {
+      const oldVal = JSON.stringify(oldConfig[key])
+      const newVal = JSON.stringify(newConfig[key])
+      if (oldVal !== newVal) changed.add(key)
+    }
+  }
+  return changed
+}
+
 export async function updateServer(ctx: Context) {
   try {
     const name = ctx.params.name as string
@@ -96,16 +119,44 @@ export async function updateServer(ctx: Context) {
       ctx.body = { error: 'config object is required' }
       return
     }
+
+    // High-risk MCP auto-disable: if connection params changed, disable the server
+    let autoDisabled = false
+    const changedParams: string[] = []
+    try {
+      const currentStatus = await bridgeMcpAction('mcp_list', {}, getProfile(ctx))
+      const currentServer = (currentStatus?.servers as any[])?.find((s: any) => s?.name === name)
+      const oldConfig = currentServer?.raw_config as Record<string, unknown> | undefined
+      const detected = detectConnectionParamChanges(oldConfig, config as Record<string, unknown>)
+      if (detected.size > 0) {
+        autoDisabled = true
+        changedParams.push(...detected)
+        // Inject disabled flag into the config update
+        ;(config as Record<string, unknown>).enabled = false
+      }
+    } catch {
+      // If we can't fetch current config, proceed without auto-disable
+    }
+
     ctx.body = await bridgeMcpAction('mcp_server_update', { name, config }, getProfile(ctx))
+
+    // Add auto-disable warning to response
+    if (autoDisabled && typeof ctx.body === 'object' && ctx.body !== null) {
+      ;(ctx.body as Record<string, unknown>)._auto_disabled = true
+      ;(ctx.body as Record<string, unknown>)._auto_disabled_reason = `Connection parameters changed: ${changedParams.join(', ')}. Server has been disabled for security. Re-enable manually after review.`
+    }
+
     if (ctx.state?.user) {
       audit.recordEvent({
-        action: 'mcp_server.update',
+        action: autoDisabled ? 'mcp_server.update_auto_disabled' : 'mcp_server.update',
         actor: { id: ctx.state.user.id, username: ctx.state.user.username, role: ctx.state.user.role },
         profile: getProfile(ctx),
         targetType: 'mcp_server',
         targetId: name,
-        description: `Updated MCP server "${name}"`,
-        meta: { name },
+        description: autoDisabled
+          ? `Updated MCP server "${name}" (auto-disabled: ${changedParams.join(', ')} changed)`
+          : `Updated MCP server "${name}"`,
+        meta: { name, autoDisabled, changedParams },
       })
     }
   } catch (err: any) {
